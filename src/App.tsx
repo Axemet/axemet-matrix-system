@@ -1,0 +1,4062 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React from 'react';
+import { 
+  DEFAULT_CONFIG, 
+  DEFAULT_THIRD_PARTY_ITEMS, 
+  DEFAULT_INTERNAL_SERVICES,
+  DEFAULT_RAW_MATERIALS
+} from './constants';
+import { 
+  MaterialItem, 
+  ThirdPartyItem, 
+  InternalServiceItem, 
+  ConfigParams, 
+  BudgetDraft,
+  Client,
+  RawMaterial,
+  MachiningType,
+  UserProfile,
+  ProductionStage,
+  MatrixProject,
+  RawMaterialStock,
+  StandardComponentStock,
+  QualityInspection,
+  NonConformance,
+  BillingMilestone,
+  CashTransaction,
+  PurchaseRequest,
+  MaintenanceLog
+} from './types';
+import { 
+  generateDefaultMaterials, 
+  generateZeroMaterials,
+  updateAutomaticPlates, 
+  calculateTotals, 
+  calculatePlateCost 
+} from './utils/calculations';
+import { generateBudgetPDF } from './utils/pdfGenerator';
+import { 
+  isSupabaseConfigured,
+  syncFetchClients,
+  syncSaveClient,
+  syncDeleteClient,
+  syncFetchMaterials,
+  syncSaveRawMaterials,
+  syncFetchServices,
+  syncSaveServices,
+  syncFetchMachiningTypes,
+  syncSaveMachiningTypes,
+  syncFetchBudgets,
+  syncSaveBudget,
+  syncDeleteBudget,
+  supabase,
+  signOutUser,
+  getCurrentUserProfile,
+  fetchProfiles,
+  updateProfile
+} from './lib/supabase';
+
+// Components
+import LoginScreen from './components/LoginScreen';
+import OrganizationAdminScreen from './components/OrganizationAdminScreen';
+import MoldInputs from './components/MoldInputs';
+import MaterialsTable from './components/MaterialsTable';
+import ThirdPartyTable from './components/ThirdPartyTable';
+import InternalServicesTable from './components/InternalServicesTable';
+import MachiningTimesTable from './components/MachiningTimesTable';
+import QuoteSummary from './components/QuoteSummary';
+import SettingsModal from './components/SettingsModal';
+import BudgetList from './components/BudgetList';
+import ClientsDatabase from './components/ClientsDatabase';
+
+// ERP Integrated Modules
+import Modulo2Engenharia from './components/Modulo2Engenharia';
+import Modulo3PCP from './components/Modulo3PCP';
+import Modulo4Estoque from './components/Modulo4Estoque';
+import Modulo5ChaoDeFabrica from './components/Modulo5ChaoDeFabrica';
+import Modulo6Qualidade from './components/Modulo6Qualidade';
+import Modulo7Custos from './components/Modulo7Custos';
+import Modulo8Financeiro from './components/Modulo8Financeiro';
+import Modulo9Compras from './components/Modulo9Compras';
+import Modulo10Manutencao from './components/Modulo10Manutencao';
+import Modulo11BI from './components/Modulo11BI';
+
+// Icons
+import { 
+  Plus, 
+  FolderOpen, 
+  Save, 
+  RotateCcw, 
+  Settings, 
+  FileDown, 
+  HelpCircle, 
+  ArrowUpRight,
+  TrendingUp,
+  Cpu,
+  Ruler,
+  Layers,
+  Briefcase,
+  Eye,
+  ChevronRight,
+  ChevronLeft,
+  Users,
+  Trash2,
+  FileText,
+  Check,
+  LogOut,
+  Clock,
+  Link,
+  X,
+  Copy,
+  Shield,
+  Activity,
+  Building,
+  ChevronDown,
+  DollarSign
+} from 'lucide-react';
+
+function generateNextReference(existingDrafts: BudgetDraft[]): string {
+  const currentYear = new Date().getFullYear();
+  const yearSuffix = `/${currentYear}`;
+  
+  // Find all drafts for the current year
+  const currentYearDrafts = existingDrafts.filter(d => d.reference && d.reference.endsWith(yearSuffix));
+  
+  if (currentYearDrafts.length === 0) {
+    return `0001${yearSuffix}`;
+  }
+  
+  // Extract numbers and find the maximum
+  const numbers = currentYearDrafts.map(d => {
+    const parts = d.reference!.split('/');
+    const num = parseInt(parts[0], 10);
+    return isNaN(num) ? 0 : num;
+  });
+  
+  const maxNum = Math.max(...numbers, 0);
+  const nextNum = maxNum + 1;
+  
+  // Pad with leading zeros to 4 digits
+  return `${String(nextNum).padStart(4, '0')}${yearSuffix}`;
+}
+
+export default function App() {
+  // Navigation & View Mode for the Axemet CRM & budgeting flow
+  const [appView, setAppView] = React.useState<'home' | 'editor' | 'details' | 'clientes' | 'crm' | 'producao' | 'acessos' | 'organizacao' | 'modulo2' | 'modulo3' | 'modulo4' | 'modulo5' | 'modulo6' | 'modulo7' | 'modulo8' | 'modulo9' | 'modulo10' | 'modulo11'>('modulo11');
+
+  // --- INTEGRATED ERP 11-MODULE STATES ---
+  const [erpProjects, setErpProjects] = React.useState<MatrixProject[]>(() => {
+    const saved = localStorage.getItem('erp_projects');
+    let loaded: any[] | null = null;
+    if (saved) {
+      try {
+        loaded = JSON.parse(saved);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    const defaultProjects: MatrixProject[] = [
+      {
+        id: 'p_1',
+        reference: '0001/2026',
+        clientName: 'Metalúrgica Aliança S/A',
+        moldDescription: 'Molde Parachoque Dianteiro G6',
+        moldType: 'Injeção Termoplástica',
+        moldingMaterial: 'Polipropileno (PP)',
+        productQuantity: 50000,
+        deliveryTime: '60 dias',
+        status: 'production',
+        date: '2026-07-01',
+        moldWidth: 800,
+        moldLength: 1200,
+        subprojects: [
+          { id: 'sub_1', name: 'Cavidade Central', description: 'Parte móvel da cavidade principal' },
+          { id: 'sub_2', name: 'Macho Móvel', description: 'Estrutura do extrator e macho' }
+        ],
+        bom: [
+          {
+            id: 'bom_1',
+            name: 'Coluna de Guia Ø25',
+            qty: 4,
+            material: 'Aço SAE 8620',
+            status: 'ordered',
+            source: 'standard',
+            catalog: 'Polimold',
+            catalogCode: 'CG-25x150',
+            operations: []
+          },
+          {
+            id: 'bom_2',
+            name: 'Placa P1 Cavidades',
+            qty: 1,
+            material: 'Aço P20',
+            status: 'machining',
+            source: 'internal',
+            dimensions: '400x500x120 mm',
+            operations: [
+              {
+                id: 'op_1',
+                bomItemId: 'bom_2',
+                name: 'Fresamento CNC',
+                workCenter: 'CNC ROMI D800',
+                setupTime: 45,
+                cycleTime: 240,
+                queueTime: 2,
+                tools: ['Fresa de desbaste Ø20'],
+                status: 'in_progress',
+                operator: 'Marcos de Souza'
+              },
+              {
+                id: 'op_2',
+                bomItemId: 'bom_2',
+                name: 'Retificação',
+                workCenter: 'Retífica Plana',
+                setupTime: 20,
+                cycleTime: 60,
+                queueTime: 1,
+                tools: ['Rebolo Alundum'],
+                status: 'completed',
+                operator: 'Valdir Lima'
+              }
+            ]
+          }
+        ],
+        revisions: [
+          { id: 'rev_1', version: 'R01', date: '2026-07-10', description: 'Correção nos canais de refrigeração traseiros.', author: 'Eng. Roberto', reason: 'Melhoria de ciclo' }
+        ],
+        costs: {
+          orçado: 120000,
+          real: 84000,
+          detalhado: {
+            materials: 18000,
+            normalizados: 9500,
+            horasMaquina: 42000,
+            maoDeObra: 8500,
+            terceiros: 6000,
+            refugo: 0
+          }
+        },
+        documents: [
+          { id: 'doc_1', name: 'Desenho 2D Placas.pdf', type: '2D', url: 'desenho_2d.pdf', date: '2026-07-02' }
+        ]
+      },
+      {
+        id: 'p_2',
+        reference: '0002/2026',
+        clientName: 'Plásticos do Brasil S.A.',
+        moldDescription: 'Molde Tampa de Copo 80mm',
+        moldType: 'Injeção Termoplástica',
+        moldingMaterial: 'Poliestireno (PS)',
+        productQuantity: 100000,
+        deliveryTime: '45 dias',
+        status: 'tryout',
+        date: '2026-07-05',
+        moldWidth: 400,
+        moldLength: 400,
+        subprojects: [],
+        bom: [],
+        revisions: [],
+        costs: {
+          orçado: 85000,
+          real: 28000,
+          detalhado: {
+            materials: 12000,
+            normalizados: 8000,
+            horasMaquina: 4000,
+            maoDeObra: 3000,
+            terceiros: 1000,
+            refugo: 0
+          }
+        },
+        documents: []
+      }
+    ];
+
+    const targetList = Array.isArray(loaded) ? loaded : defaultProjects;
+
+    // Smart migration for backward compatibility
+    return targetList.map((p: any) => {
+      // Check status validity
+      let validStatus = p.status;
+      if (validStatus === 'in_progress') validStatus = 'production';
+      if (validStatus === 'try_out') validStatus = 'tryout';
+      if (!['planning', 'production', 'tryout', 'delivered', 'warranty', 'completed'].includes(validStatus)) {
+        validStatus = 'production';
+      }
+
+      // Convert bom
+      const rawBom = Array.isArray(p.bom) ? p.bom : [];
+      const migratedBom = rawBom.map((b: any) => {
+        const name = b.name || b.partName || 'Item da BOM';
+        const operations = Array.isArray(b.operations) ? b.operations : [];
+        const source = b.source || (b.catalog || b.catalogCode ? 'standard' : 'internal');
+        const qty = typeof b.qty === 'number' ? b.qty : 1;
+        const status = b.status || 'pending';
+        return {
+          ...b,
+          id: b.id || `bom_${Date.now()}_${Math.random()}`,
+          name,
+          qty,
+          source,
+          status,
+          operations: operations.map((op: any) => ({
+            ...op,
+            id: op.id || `op_${Date.now()}_${Math.random()}`,
+            bomItemId: op.bomItemId || b.id,
+            name: op.name || op.process || 'Operação',
+            workCenter: op.workCenter || op.machine || 'Geral',
+            setupTime: typeof op.setupTime === 'number' ? op.setupTime : (op.hoursPlanned ? op.hoursPlanned * 10 : 30),
+            cycleTime: typeof op.cycleTime === 'number' ? op.cycleTime : (op.hoursPlanned ? op.hoursPlanned * 50 : 60),
+            queueTime: typeof op.queueTime === 'number' ? op.queueTime : 1,
+            tools: Array.isArray(op.tools) ? op.tools : [],
+            status: op.status || 'pending'
+          }))
+        };
+      });
+
+      return {
+        id: p.id || `p_${Date.now()}_${Math.random()}`,
+        reference: p.reference || '0000/2026',
+        clientName: p.clientName || 'Cliente Geral',
+        moldDescription: p.moldDescription || 'Descrição do Molde',
+        moldType: p.moldType || 'Injeção Termoplástica',
+        moldingMaterial: p.moldingMaterial || 'PP',
+        productQuantity: p.productQuantity || 10000,
+        deliveryTime: p.deliveryTime || '45 dias',
+        status: validStatus,
+        date: p.date || '2026-07-01',
+        moldWidth: p.moldWidth || 400,
+        moldLength: p.moldLength || 400,
+        subprojects: Array.isArray(p.subprojects) ? p.subprojects : [],
+        bom: migratedBom,
+        revisions: Array.isArray(p.revisions) ? p.revisions : [],
+        costs: p.costs || { orçado: 50000, real: 0, detalhado: { materials: 0, normalizados: 0, horasMaquina: 0, maoDeObra: 0, terceiros: 0, refugo: 0 } },
+        documents: Array.isArray(p.documents) ? p.documents : []
+      };
+    });
+  });
+
+  const [erpRawStock, setErpRawStock] = React.useState<RawMaterialStock[]>(() => {
+    const saved = localStorage.getItem('erp_raw_stock');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'raw_1', type: 'Aço P20', dimensions: '400x500x120mm', weight: 188, batch: 'CRT-29402', qualityDureza: '32 HRC', certificateUrl: 'cert_p20_g1.pdf', status: 'available' },
+      { id: 'raw_2', type: 'Aço H13', dimensions: '150x150x80mm', weight: 14, batch: 'CRT-98321', qualityDureza: '30 HRC', certificateUrl: 'cert_h13_r4.pdf', status: 'available' }
+    ];
+  });
+
+  const [erpStdStock, setErpStdStock] = React.useState<StandardComponentStock[]>(() => {
+    const saved = localStorage.getItem('erp_std_stock');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'std_1', catalog: 'Polimold', code: 'CG-25x150', name: 'Coluna de Guia Ø25x150mm', stock: 12, minStock: 8, price: 110 },
+      { id: 'std_2', catalog: 'Hasco', code: 'Z12/12x100', name: 'Pino Extrator Ø12x100mm', stock: 4, minStock: 20, price: 45 }
+    ];
+  });
+
+  const [erpAudits, setErpAudits] = React.useState<QualityInspection[]>(() => {
+    const saved = localStorage.getItem('erp_audits');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'aud_1', auditName: 'Metrologia Dimensional Cavidades', date: '2026-07-09', inspector: 'Roberto Lima', remarks: 'Folgas de montagem toleradas abaixo de 0.02mm.', status: 'approved' }
+    ];
+  });
+
+  const [erpRncs, setErpRncs] = React.useState<NonConformance[]>(() => {
+    const saved = localStorage.getItem('erp_rncs');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'rnc_1', title: 'Empenamento Placa P3', origin: 'Tratamento Térmico', description: 'Dureza excessiva na têmpera causou microfissura na base.', treatment: 'Alívio de tensões por revenimento adicional.', status: 'in_progress' }
+    ];
+  });
+
+  const [erpMilestones, setErpMilestones] = React.useState<BillingMilestone[]>(() => {
+    const saved = localStorage.getItem('erp_milestones');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'ms_1', projectId: 'p_1', projectName: '0001/2026', description: 'Assinatura do Contrato (Sinal 30%)', percent: 30, value: 36000, dueDate: '2026-07-01', status: 'paid' },
+      { id: 'ms_2', projectId: 'p_1', projectName: '0001/2026', description: 'Aprovação Try-Out T1 (40%)', percent: 40, value: 48000, dueDate: '2026-07-28', status: 'pending' }
+    ];
+  });
+
+  const [erpTransactions, setErpTransactions] = React.useState<CashTransaction[]>(() => {
+    const saved = localStorage.getItem('erp_transactions');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 't_1', projectId: 'p_1', projectName: '0001/2026', type: 'receita', category: 'cliente_faturamento', description: 'Sinal 30% Adiantamento Parachoque G6', value: 36000, date: '2026-07-01', status: 'paid' },
+      { id: 't_2', projectId: 'p_1', projectName: '0001/2026', type: 'despesa', category: 'material', description: 'Compra Aço P20 Cavidades Gerdau', value: 12000, date: '2026-07-02', status: 'paid' }
+    ];
+  });
+
+  const [erpRequests, setErpRequests] = React.useState<PurchaseRequest[]>(() => {
+    const saved = localStorage.getItem('erp_requests');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'req_1', projectId: 'p_1', projectName: '0001/2026', itemType: 'materia_prima', description: 'Bloco de Cobre Eletrolítico 80x80x150mm', qty: 2, status: 'pending_quote' }
+    ];
+  });
+
+  const [erpMaintLogs, setErpMaintLogs] = React.useState<MaintenanceLog[]>(() => {
+    const saved = localStorage.getItem('erp_maint_logs');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 'm_1', projectId: 'p_1', projectName: '0001/2026', cycles: 120000, type: 'preventative', description: 'Polimento manual das cavidades e reaperto da gaveta hidráulica.', partsReplaced: [], cost: 250, date: '2026-07-05', responsible: 'Henrique Ajustador', isWarranty: true, status: 'completed' }
+    ];
+  });
+
+  // Automatically persist ERP states
+  React.useEffect(() => {
+    localStorage.setItem('erp_projects', JSON.stringify(erpProjects));
+  }, [erpProjects]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_raw_stock', JSON.stringify(erpRawStock));
+  }, [erpRawStock]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_std_stock', JSON.stringify(erpStdStock));
+  }, [erpStdStock]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_audits', JSON.stringify(erpAudits));
+  }, [erpAudits]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_rncs', JSON.stringify(erpRncs));
+  }, [erpRncs]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_milestones', JSON.stringify(erpMilestones));
+  }, [erpMilestones]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_transactions', JSON.stringify(erpTransactions));
+  }, [erpTransactions]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_requests', JSON.stringify(erpRequests));
+  }, [erpRequests]);
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_maint_logs', JSON.stringify(erpMaintLogs));
+  }, [erpMaintLogs]);
+
+  // --- ERP STATE HANDLERS ---
+  const [erpTools, setErpTools] = React.useState<any[]>(() => {
+    const saved = localStorage.getItem('erp_tools');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return [
+      { id: 't_1', code: 'F-10-CO', name: 'Fresa Inteiriça Metal Duro Ø10mm Z4', type: 'fresa', stock: 5, minStock: 3, cost: 180, activeCycles: 24, maxCycles: 100, status: 'available' },
+      { id: 't_2', code: 'M-12-MA', name: 'Macho de Roscar M12 Canal Helicoidal', type: 'macho', stock: 2, minStock: 2, cost: 95, activeCycles: 5, maxCycles: 50, status: 'available' }
+    ];
+  });
+
+  React.useEffect(() => {
+    localStorage.setItem('erp_tools', JSON.stringify(erpTools));
+  }, [erpTools]);
+
+  const handleSaveProject = (updatedProj: MatrixProject) => {
+    setErpProjects(prev => {
+      const exists = prev.some(p => p.id === updatedProj.id);
+      if (exists) {
+        return prev.map(p => p.id === updatedProj.id ? updatedProj : p);
+      } else {
+        return [updatedProj, ...prev];
+      }
+    });
+  };
+
+  const handleDeleteProject = (id: string) => {
+    setErpProjects(prev => prev.filter(p => p.id !== id));
+    showToast('Projeto de molde removido.', 'info');
+  };
+
+  const handleTriggerPurchaseRequest = (projId: string, itemType: string, desc: string, qty: number) => {
+    const proj = erpProjects.find(p => p.id === projId);
+    const newReq = {
+      id: `req_${Date.now()}`,
+      projectId: projId,
+      projectName: proj ? proj.reference : 'Geral',
+      itemType: itemType as any,
+      description: desc,
+      qty,
+      status: 'pending_quote' as const
+    };
+    setErpRequests(prev => [newReq, ...prev]);
+    showToast(`Solicitação de compra gerada para ${desc}!`, 'success');
+  };
+
+  // User Authentication State
+  // Access is granted exclusively by Supabase Auth and an active database profile.
+  const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [currentUser, setCurrentUser] = React.useState<any>(null);
+  const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
+  const [profilesList, setProfilesList] = React.useState<UserProfile[]>([]);
+  const [profileLoading, setProfileLoading] = React.useState(false);
+  const [accessBlockedMsg, setAccessBlockedMsg] = React.useState<string | null>(null);
+  
+  // Supabase Database initialization checks
+  const [isSupabaseSchemaMissing, setIsSupabaseSchemaMissing] = React.useState(false);
+  const [showSchemaGuide, setShowSchemaGuide] = React.useState(false);
+  const [copied, setCopied] = React.useState(false);
+
+  // States for user permissions and collaborator CRUD
+  const [isUserFormOpen, setIsUserFormOpen] = React.useState(false);
+  const [selectedProfileForEdit, setSelectedProfileForEdit] = React.useState<any | null>(null);
+  const [formName, setFormName] = React.useState('');
+  const [formEmail, setFormEmail] = React.useState('');
+  const [formRole, setFormRole] = React.useState<'admin' | 'manager' | 'operator' | 'viewer'>('viewer');
+  const [formStatus, setFormStatus] = React.useState<'active' | 'pending' | 'inactive'>('pending');
+  const [formSector, setFormSector] = React.useState('Comercial');
+  const [formOrg, setFormOrg] = React.useState('Unidade Alpha Matrix');
+  const [formPermissions, setFormPermissions] = React.useState<Record<string, { view: boolean, create: boolean, edit: boolean, delete: boolean, approve: boolean }>>({
+    'Comercial': { view: true, create: true, edit: false, delete: false, approve: false },
+    'Engenharia': { view: true, create: false, edit: false, delete: false, approve: false },
+    'PCP': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Produção': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Almoxarifado': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Compras': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Qualidade': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Controladoria': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Financeiro': { view: true, create: false, edit: false, delete: false, approve: false },
+    'Manutenção': { view: true, create: false, edit: false, delete: false, approve: false },
+    'BI': { view: true, create: false, edit: false, delete: false, approve: false },
+  });
+  
+  const handleCopySQL = () => {
+    navigator.clipboard.writeText(MIGRATION_SQL);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const loadUserProfile = async (userId: string, email: string) => {
+    setProfileLoading(true);
+    setAccessBlockedMsg(null);
+    try {
+      const profile = await getCurrentUserProfile(userId);
+      if (profile) {
+        if (profile.status === 'active') {
+          setUserProfile(profile);
+          setIsLoggedIn(true);
+        } else {
+          // Block access
+          setIsLoggedIn(false);
+          setCurrentUser(null);
+          setUserProfile(null);
+          sessionStorage.removeItem('mm_logged_in');
+          if (profile.status === 'pending') {
+            setAccessBlockedMsg('Seu cadastro está pendente de aprovação pelo Administrador da Axemet Solution.');
+          } else {
+            setAccessBlockedMsg('Seu acesso foi desativado pelo Administrador da Axemet Solution.');
+          }
+          await signOutUser();
+        }
+      } else {
+        // If profile was not created automatically by the trigger yet
+        // we can create a pending profile row manually
+        try {
+          const newProfile = await updateProfile(userId, {
+            full_name: email.split('@')[0],
+            role: 'viewer',
+            status: 'pending',
+            organization: 'Organização Cliente'
+          });
+          setAccessBlockedMsg('Seu cadastro foi realizado com sucesso e está aguardando aprovação pelo Administrador.');
+          await signOutUser();
+        } catch (err) {
+          // Fallback if profiles table doesn't exist
+          setIsSupabaseSchemaMissing(true);
+          setShowSchemaGuide(true);
+          setIsLoggedIn(false);
+          setAccessBlockedMsg('Não foi possível validar seu perfil. Contate o administrador.');
+        }
+      }
+    } catch (e) {
+      console.error('Erro ao processar perfil:', e);
+    } finally {
+      setProfileLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (isSupabaseConfigured) {
+      // Check active session
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session?.user) {
+          setCurrentUser(session.user);
+          loadUserProfile(session.user.id, session.user.email || '');
+        }
+      });
+
+      // Listen to auth changes
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (session?.user) {
+          setCurrentUser(session.user);
+          loadUserProfile(session.user.id, session.user.email || '');
+        } else {
+          setIsLoggedIn(false);
+          setCurrentUser(null);
+          setUserProfile(null);
+          sessionStorage.removeItem('mm_logged_in');
+          localStorage.removeItem('mm_logged_in');
+        }
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
+  }, []);
+
+  // Active Tab state inside editor
+  const [activeTab, setActiveTab] = React.useState<'dados' | 'materiais' | 'tempos' | 'terceiros' | 'servicos' | 'resumo' | 'clientes'>('dados');
+
+  // Client registry list
+  const [clients, setClients] = React.useState<Client[]>([]);
+
+  // Raw Materials state
+  const [rawMaterials, setRawMaterials] = React.useState<RawMaterial[]>(DEFAULT_RAW_MATERIALS);
+
+  // Reference Code State
+  const [reference, setReference] = React.useState('');
+
+  // Client & Mold State
+  const [clientName, setClientName] = React.useState('');
+  const [contactName, setContactName] = React.useState('');
+  const [moldType, setMoldType] = React.useState('');
+  const [moldingMaterial, setMoldingMaterial] = React.useState('');
+  const [productQuantity, setProductQuantity] = React.useState<number>(1000);
+  const [deliveryTime, setDeliveryTime] = React.useState('');
+  const [observations, setObservations] = React.useState('');
+  const [status, setStatus] = React.useState<'draft' | 'pending' | 'approved' | 'rejected'>('draft');
+  const [moldDescription, setMoldDescription] = React.useState('');
+  const [date, setDate] = React.useState(new Date().toISOString().split('T')[0]);
+  const [moldWidth, setMoldWidth] = React.useState(0);
+  const [moldLength, setMoldLength] = React.useState(0);
+
+  // Negotiation Discounts
+  const [discountPercent, setDiscountPercent] = React.useState<number>(0);
+  const [discountValue, setDiscountValue] = React.useState<number>(0);
+
+  // Configuration State
+  const [config, setConfig] = React.useState<ConfigParams>({ ...DEFAULT_CONFIG });
+
+  // Items State
+  const [materials, setMaterials] = React.useState<MaterialItem[]>([]);
+  const [thirdPartyItems, setThirdPartyItems] = React.useState<ThirdPartyItem[]>([]);
+  const [internalServices, setInternalServices] = React.useState<InternalServiceItem[]>([]);
+
+  // Machining Types State
+  const [machiningTypes, setMachiningTypes] = React.useState<MachiningType[]>(() => {
+    const defaultTypes = [
+      { id: 'mt_fresa', name: 'Usinagem Aço', hourlyRate: 160.0 },
+      { id: 'mt_fresa_temp', name: 'Usinagem Aço Temperado', hourlyRate: 200.0 },
+      { id: 'mt_fresa_alum', name: 'Usinagem Alumínio', hourlyRate: 100.0 },
+      { id: 'mt_erosao', name: 'Erosão', hourlyRate: 75.0 },
+      { id: 'mt_retifica', name: 'Retífica', hourlyRate: 120.0 },
+    ];
+    const saved = localStorage.getItem('orcamolde_machining_types');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // If some of the default items are missing, merge them so user gets new defaults
+          const existingIds = new Set(parsed.map((item: any) => item.id));
+          const toAdd = defaultTypes.filter(d => !existingIds.has(d.id));
+          if (toAdd.length > 0) {
+            const merged = [...parsed, ...toAdd];
+            localStorage.setItem('orcamolde_machining_types', JSON.stringify(merged));
+            return merged;
+          }
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Erro ao carregar tipos de usinagem', e);
+      }
+    }
+    return defaultTypes;
+  });
+
+  // Modals Visibility
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
+
+  // Drafts History State
+  const [drafts, setDrafts] = React.useState<BudgetDraft[]>([]);
+  const [activeDraftId, setActiveDraftId] = React.useState<string | null>(null);
+
+  // Home Screen Search & Filters State
+  const [homeSearchTerm, setHomeSearchTerm] = React.useState('');
+  const [homeFilterStatus, setHomeFilterStatus] = React.useState<string>('all');
+  const [homeFilterClient, setHomeFilterClient] = React.useState<string>('all');
+  const [confirmDeleteDraftId, setConfirmDeleteDraftId] = React.useState<string | null>(null);
+
+  // Toast / Alerts notification state
+  const [toastMessage, setToastMessage] = React.useState<{ text: string; type: 'success' | 'info' | 'error' } | null>(null);
+
+  // Trigger auto toast dismissal
+  React.useEffect(() => {
+    if (toastMessage) {
+      const timer = setTimeout(() => setToastMessage(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [toastMessage]);
+
+  const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
+    setToastMessage({ text, type });
+  };
+
+  const handleLoginAttempt = (): boolean => false;
+
+  const handleLogout = async () => {
+    if (isSupabaseConfigured) {
+      try {
+        await signOutUser();
+      } catch (e) {
+        console.error('Erro ao encerrar sessão no Supabase:', e);
+      }
+    }
+    setIsLoggedIn(false);
+    sessionStorage.removeItem('mm_logged_in');
+    localStorage.removeItem('mm_logged_in');
+    localStorage.removeItem('mm_remember_me');
+    showToast('Sessão encerrada com segurança.', 'info');
+  };
+
+  // --- INITIALIZATION & PERSISTED CONFIGS ---
+  React.useEffect(() => {
+    async function loadInitialData() {
+      // Load config from localStorage if it exists
+      const savedConfig = localStorage.getItem('mold_config');
+      let activeConfig = DEFAULT_CONFIG;
+      if (savedConfig) {
+        try {
+          activeConfig = { ...DEFAULT_CONFIG, ...JSON.parse(savedConfig) };
+          setConfig(activeConfig);
+        } catch (e) {
+          console.error('Erro ao carregar configurações salvas', e);
+        }
+      }
+
+      if (isSupabaseConfigured) {
+        try {
+          showToast('Sincronizando com o Supabase...', 'info');
+          
+          let schemaMissing = false;
+          const handleFetchError = (name: string, err: any) => {
+            console.error(`${name} fetch error:`, err);
+            if (err && (err.code === 'PGRST205' || (err.message && err.message.includes('Could not find the table')) || (err.message && err.message.includes('relation') && err.message.includes('does not exist')))) {
+              schemaMissing = true;
+            }
+            return [];
+          };
+
+          const [dbClients, dbMaterials, dbMachiningTypes, dbServices, dbBudgets] = await Promise.all([
+            syncFetchClients().catch((err) => handleFetchError('Clients', err)),
+            syncFetchMaterials().catch((err) => handleFetchError('Materials', err)),
+            syncFetchMachiningTypes().catch((err) => handleFetchError('Machining types', err)),
+            syncFetchServices().catch((err) => handleFetchError('Services', err)),
+            syncFetchBudgets().catch((err) => handleFetchError('Budgets', err)),
+          ]);
+
+          if (schemaMissing) {
+            setIsSupabaseSchemaMissing(true);
+            showToast('Tabelas do Supabase não encontradas. Usando modo de simulação/local.', 'error');
+            throw new Error('Supabase schema is missing, falling back to local storage');
+          }
+
+          let activeClients = dbClients;
+          if (activeClients.length === 0) {
+            const INITIAL_CLIENTS: Client[] = [
+              {
+                id: 'client_1',
+                name: 'Metalúrgica Aliança S/A',
+                cnpj: '98.765.432/0001-00',
+                phone: '(47) 3456-7890',
+                email: 'suprimentos@alianca.com',
+                city: 'Caxias do Sul - RS',
+              },
+              {
+                id: 'client_2',
+                name: 'Metalúrgica Teste Ltda.',
+                cnpj: '12.345.678/0001-99',
+                phone: '(11) 98765-4321',
+                email: 'compras@metaltes.com',
+                city: 'Joinville - SC',
+              },
+              {
+                id: 'client_3',
+                name: 'Plásticos do Brasil S.A.',
+                cnpj: '45.678.901/0001-22',
+                phone: '(19) 3211-5544',
+                email: 'contato@plasticosbr.com',
+                city: 'Sorocaba - SP',
+              }
+            ];
+            activeClients = INITIAL_CLIENTS;
+            setClients(INITIAL_CLIENTS);
+            for (const c of INITIAL_CLIENTS) {
+              await syncSaveClient(c).catch(console.error);
+            }
+          } else {
+            setClients(dbClients);
+          }
+
+          let activeRawMaterials = dbMaterials;
+          if (activeRawMaterials.length === 0) {
+            activeRawMaterials = DEFAULT_RAW_MATERIALS;
+            setRawMaterials(DEFAULT_RAW_MATERIALS);
+            await syncSaveRawMaterials(DEFAULT_RAW_MATERIALS).catch(console.error);
+          } else {
+            setRawMaterials(dbMaterials);
+          }
+
+          if (dbMachiningTypes.length > 0) {
+            setMachiningTypes(dbMachiningTypes);
+          } else {
+            await syncSaveMachiningTypes(machiningTypes).catch(console.error);
+          }
+
+          setDrafts(dbBudgets);
+
+          const nextRef = generateNextReference(dbBudgets);
+          setReference(nextRef);
+
+          const initialMaterials = generateZeroMaterials(activeConfig, activeRawMaterials);
+          setMaterials(initialMaterials);
+
+          setThirdPartyItems(
+            DEFAULT_THIRD_PARTY_ITEMS.map((item, index) => ({
+              ...item,
+              id: `tp_${index}`,
+              total: 0,
+            }))
+          );
+
+          const initialServices = DEFAULT_INTERNAL_SERVICES.map((item, index) => {
+            const srvId = `srv_${index}`;
+            const foundDb = dbServices.find((r: any) => r.name === item.name || r.id === srvId);
+            return {
+              ...item,
+              id: srvId,
+              valUnit: foundDb ? foundDb.valUnit : item.valUnit,
+              total: 0,
+            };
+          });
+          setInternalServices(initialServices);
+
+          showToast('Dados sincronizados com o Supabase!', 'success');
+          return;
+        } catch (e) {
+          console.error('Falha na sincronização do Supabase, usando localStorage:', e);
+          showToast('Erro ao sincronizar com Supabase. Usando armazenamento local.', 'error');
+        }
+      }
+
+      // Fallback
+      const savedDrafts = localStorage.getItem('mold_drafts');
+      let loadedDrafts: BudgetDraft[] = [];
+      if (savedDrafts) {
+        try {
+          loadedDrafts = JSON.parse(savedDrafts);
+          setDrafts(loadedDrafts);
+        } catch (e) {
+          console.error('Erro ao carregar orçamentos salvos', e);
+        }
+      }
+
+      const nextRef = generateNextReference(loadedDrafts);
+      setReference(nextRef);
+
+      const savedRawMaterials = localStorage.getItem('orcamolde_raw_materials');
+      let loadedRawMaterials = DEFAULT_RAW_MATERIALS;
+      if (savedRawMaterials) {
+        try {
+          loadedRawMaterials = JSON.parse(savedRawMaterials);
+          setRawMaterials(loadedRawMaterials);
+        } catch (e) {
+          console.error('Erro ao carregar matérias-primas salvas', e);
+        }
+      }
+
+      const savedClients = localStorage.getItem('orcamolde_clients');
+      if (savedClients) {
+        try {
+          setClients(JSON.parse(savedClients));
+        } catch (e) {
+          console.error('Erro ao carregar clientes', e);
+        }
+      } else {
+        const INITIAL_CLIENTS: Client[] = [
+          {
+            id: 'client_1',
+            name: 'Metalúrgica Aliança S/A',
+            cnpj: '98.765.432/0001-00',
+            phone: '(47) 3456-7890',
+            email: 'suprimentos@alianca.com',
+            city: 'Caxias do Sul - RS',
+          },
+          {
+            id: 'client_2',
+            name: 'Metalúrgica Teste Ltda.',
+            cnpj: '12.345.678/0001-99',
+            phone: '(11) 98765-4321',
+            email: 'compras@metaltes.com',
+            city: 'Joinville - SC',
+          },
+          {
+            id: 'client_3',
+            name: 'Plásticos do Brasil S.A.',
+            cnpj: '45.678.901/0001-22',
+            phone: '(19) 3211-5544',
+            email: 'contato@plasticosbr.com',
+            city: 'Sorocaba - SP',
+          }
+        ];
+        setClients(INITIAL_CLIENTS);
+        localStorage.setItem('orcamolde_clients', JSON.stringify(INITIAL_CLIENTS));
+      }
+
+      const initialMaterials = generateZeroMaterials(activeConfig, loadedRawMaterials);
+      setMaterials(initialMaterials);
+
+      setThirdPartyItems(
+        DEFAULT_THIRD_PARTY_ITEMS.map((item, index) => ({
+          ...item,
+          id: `tp_${index}`,
+          total: 0,
+        }))
+      );
+
+      const savedRates = localStorage.getItem('orcamolde_service_rates');
+      let loadedRates: any[] = [];
+      if (savedRates) {
+        try {
+          loadedRates = JSON.parse(savedRates);
+        } catch (e) {
+          console.error('Erro ao carregar taxas de serviço salvas', e);
+        }
+      }
+
+      const initialServices = DEFAULT_INTERNAL_SERVICES.map((item, index) => {
+        const srvId = `srv_${index}`;
+        const foundSaved = loadedRates.find(r => r.name === item.name || r.id === srvId);
+        return {
+          ...item,
+          id: srvId,
+          valUnit: foundSaved ? foundSaved.valUnit : item.valUnit,
+          total: 0,
+        };
+      });
+      setInternalServices(initialServices);
+
+      showToast('Sistema carregado com sucesso. Molde padrão 250x250 configurado.', 'info');
+    }
+
+    loadInitialData();
+  }, []);
+
+  // Fetch profiles when Acessos tab is viewed
+  React.useEffect(() => {
+    if (appView === 'acessos') {
+      if (isSupabaseConfigured && !isSupabaseSchemaMissing) {
+        setProfileLoading(true);
+        fetchProfiles()
+          .then((profs) => {
+            if (profs && profs.length > 0) {
+              setProfilesList(profs);
+            } else {
+              // Fallback default mock profile list if empty
+              setProfilesList([
+                {
+                  id: 'local_admin',
+                  email: 'admin@axemet.com',
+                  full_name: 'Administrador Local (Simulado)',
+                  role: 'admin',
+                  status: 'active',
+                  organization: 'Axemet Solution LTDA',
+                  updated_at: new Date().toISOString(),
+                },
+                {
+                  id: 'mock_user_1',
+                  email: 'operador@cliente.com',
+                  full_name: 'Marcos de Souza (Operador)',
+                  role: 'operator',
+                  status: 'active',
+                  organization: 'Metalúrgica Aliança S/A',
+                  updated_at: new Date().toISOString(),
+                },
+                {
+                  id: 'mock_user_2',
+                  email: 'visitante@cliente.com',
+                  full_name: 'Beatriz Costa (Leitor)',
+                  role: 'viewer',
+                  status: 'pending',
+                  organization: 'Metalúrgica Teste Ltda.',
+                  updated_at: new Date().toISOString(),
+                }
+              ]);
+            }
+          })
+          .catch((err) => {
+            console.warn('Erro ao buscar perfis:', err);
+            // Non-blocking fallback
+            setProfilesList([
+              {
+                id: 'local_admin',
+                email: 'admin@axemet.com',
+                full_name: 'Administrador Local (Simulado)',
+                role: 'admin',
+                status: 'active',
+                organization: 'Axemet Solution LTDA',
+                updated_at: new Date().toISOString(),
+              },
+              {
+                id: 'mock_user_1',
+                email: 'operador@cliente.com',
+                full_name: 'Marcos de Souza (Operador)',
+                role: 'operator',
+                status: 'active',
+                organization: 'Metalúrgica Aliança S/A',
+                updated_at: new Date().toISOString(),
+              },
+              {
+                id: 'mock_user_2',
+                email: 'visitante@cliente.com',
+                full_name: 'Beatriz Costa (Leitor)',
+                role: 'viewer',
+                status: 'pending',
+                organization: 'Metalúrgica Teste Ltda.',
+                updated_at: new Date().toISOString(),
+              }
+            ]);
+          })
+          .finally(() => {
+            setProfileLoading(false);
+          });
+      } else {
+        // Mock profile list in local offline mode or when schema is missing
+        setProfilesList([
+          {
+            id: 'local_admin',
+            email: 'admin@axemet.com',
+            full_name: 'Administrador Local (Simulado)',
+            role: 'admin',
+            status: 'active',
+            organization: 'Axemet Solution LTDA',
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock_user_1',
+            email: 'operador@cliente.com',
+            full_name: 'Marcos de Souza (Operador)',
+            role: 'operator',
+            status: 'active',
+            organization: 'Metalúrgica Aliança S/A',
+            updated_at: new Date().toISOString(),
+          },
+          {
+            id: 'mock_user_2',
+            email: 'visitante@cliente.com',
+            full_name: 'Beatriz Costa (Leitor)',
+            role: 'viewer',
+            status: 'pending',
+            organization: 'Metalúrgica Teste Ltda.',
+            updated_at: new Date().toISOString(),
+          }
+        ]);
+      }
+    }
+  }, [appView, isSupabaseSchemaMissing]);
+
+  // --- CLIENT DATABASE HANDLERS ---
+  const handleAddClient = async (newClient: Client) => {
+    setClients((prev) => {
+      const updated = [...prev, newClient];
+      localStorage.setItem('orcamolde_clients', JSON.stringify(updated));
+      return updated;
+    });
+    if (isSupabaseConfigured) {
+      try {
+        await syncSaveClient(newClient);
+      } catch (e) {
+        console.error('Erro ao salvar cliente no Supabase:', e);
+        showToast('Salvo localmente, erro de sincronização com Supabase', 'error');
+      }
+    }
+    showToast(`Cliente "${newClient.name}" cadastrado com sucesso!`, 'success');
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    setClients((prev) => {
+      const updated = prev.filter((c) => c.id !== id);
+      localStorage.setItem('orcamolde_clients', JSON.stringify(updated));
+      return updated;
+    });
+    if (isSupabaseConfigured) {
+      try {
+        await syncDeleteClient(id);
+      } catch (e) {
+        console.error('Erro ao deletar cliente no Supabase:', e);
+      }
+    }
+    showToast('Cliente excluído do banco de dados.');
+  };
+
+  const handleUpdateClient = async (updatedClient: Client) => {
+    setClients((prev) => {
+      const updated = prev.map((c) => (c.id === updatedClient.id ? updatedClient : c));
+      localStorage.setItem('orcamolde_clients', JSON.stringify(updated));
+      return updated;
+    });
+    if (isSupabaseConfigured) {
+      try {
+        await syncSaveClient(updatedClient);
+      } catch (e) {
+        console.error('Erro ao atualizar cliente no Supabase:', e);
+        showToast('Salvo localmente, erro de sincronização com Supabase', 'error');
+      }
+    }
+    showToast(`Cliente "${updatedClient.name}" alterado com sucesso!`, 'success');
+  };
+
+  const handleUpdateProfile = async (profileId: string, updates: Partial<UserProfile>) => {
+    setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, ...updates } : p));
+    showToast('Atualizando permissões...', 'info');
+    if (isSupabaseConfigured) {
+      try {
+        await updateProfile(profileId, updates);
+        showToast('Perfil atualizado com sucesso!', 'success');
+      } catch (err) {
+        console.error('Erro ao atualizar perfil no Supabase:', err);
+        showToast('Erro ao salvar alteração. Tente novamente.', 'error');
+        // Reload list
+        const profs = await fetchProfiles();
+        if (profs) setProfilesList(profs);
+      }
+    } else {
+      showToast('Simulação: Perfil atualizado com sucesso!', 'success');
+    }
+  };
+
+  // --- REACTIVE PLATE UPDATES ---
+  // Whenever width, length, or raw materials/prices change, recalculate the automatic plates
+  React.useEffect(() => {
+    if (materials.length > 0) {
+      setMaterials(prev => updateAutomaticPlates(moldWidth, moldLength, prev, config, rawMaterials));
+    }
+  }, [moldWidth, moldLength, config, rawMaterials]);
+
+  // --- SYNC MACHINING TIMES TO INTERNAL SERVICES ---
+  // Whenever materials (containing machiningTimes) or machiningTypes configuration changes,
+  // we automatically update the corresponding service item inside internalServices.
+  React.useEffect(() => {
+    setInternalServices(prevServices => {
+      // 1. Sum up machining times per type across all plates
+      const summedTimes: { [id: string]: number } = {};
+      machiningTypes.forEach(mt => {
+        summedTimes[mt.id] = 0;
+      });
+
+      materials.forEach(m => {
+        if (m.machiningTimes) {
+          Object.entries(m.machiningTimes).forEach(([mtId, hours]) => {
+            if (summedTimes[mtId] !== undefined && typeof hours === 'number') {
+              summedTimes[mtId] += hours;
+            }
+          });
+        }
+      });
+
+      // 2. Separate manual and automated service items
+      const machiningNames = new Set(machiningTypes.map(mt => mt.name.toLowerCase().trim()));
+      const manualServices = prevServices.filter(s => !machiningNames.has(s.name.toLowerCase().trim()));
+
+      // 3. Create or update services for current machining types
+      const autoServices: InternalServiceItem[] = machiningTypes.map(mt => {
+        const hours = summedTimes[mt.id] || 0;
+        // See if we already have this service in prevServices
+        const existing = prevServices.find(s => s.name.toLowerCase().trim() === mt.name.toLowerCase().trim());
+        return {
+          id: existing?.id || `srv_machining_${mt.id}`,
+          name: mt.name,
+          unit: 'h',
+          valUnit: mt.hourlyRate,
+          qtd: hours,
+          total: hours * mt.hourlyRate
+        };
+      });
+
+      return [...manualServices, ...autoServices];
+    });
+  }, [materials, machiningTypes]);
+
+  // --- CALCULATE ALL TOTALS ON EACH RENDER ---
+  const totals = calculateTotals(materials, thirdPartyItems, internalServices, config);
+
+  const machiningTotal = React.useMemo(() => {
+    let sum = 0;
+    materials.forEach(m => {
+      if (m.machiningTimes) {
+        Object.entries(m.machiningTimes).forEach(([mtId, hours]) => {
+          if (typeof hours === 'number') {
+            const mt = machiningTypes.find(t => t.id === mtId);
+            if (mt) {
+              sum += hours * mt.hourlyRate;
+            }
+          }
+        });
+      }
+    });
+    return sum;
+  }, [materials, machiningTypes]);
+
+  // --- HANDLERS ---
+
+  // Materials Update
+  const handleUpdateMaterial = (id: string, updated: Partial<MaterialItem>) => {
+    setMaterials(prev =>
+      prev.map((item) => {
+        if (item.id !== id) return item;
+
+        // If manual changes are made to measurements, mark isAuto as false (or keep it if it's manual rows)
+        const isAuto = updated.comp !== undefined || updated.larg !== undefined ? false : item.isAuto;
+
+        const merged = { ...item, ...updated, isAuto };
+        
+        // Ensure standard material types map to appropriate config prices/densities
+        if (updated.material) {
+          const matInfo = rawMaterials.find(rm => rm.name === updated.material);
+          if (matInfo) {
+            merged.valKg = matInfo.pricePerKg;
+            merged.dens = matInfo.density;
+          }
+        }
+
+        // Recalculate total cost
+        merged.total = calculatePlateCost(merged.comp, merged.larg, merged.esp, merged.qtd, merged.dens, merged.valKg);
+        return merged;
+      })
+    );
+  };
+
+  // Add Custom Material Plate
+  const handleAddMaterial = (newItem: MaterialItem) => {
+    setMaterials(prev => [...prev, newItem]);
+    showToast(`Item "${newItem.name}" adicionado com sucesso!`);
+  };
+
+  // Delete Material Plate
+  const handleDeleteMaterial = (id: string) => {
+    setMaterials(prev => prev.filter(item => item.id !== id));
+    showToast('Item de material removido com sucesso.', 'info');
+  };
+
+  // Update Machining Times for a Material Plate
+  const handleUpdateMaterialTimes = (materialId: string, times: { [machiningTypeId: string]: number }) => {
+    setMaterials(prev =>
+      prev.map(m => (m.id === materialId ? { ...m, machiningTimes: times } : m))
+    );
+  };
+
+  // Clear All Machining Times
+  const handleClearAllMachiningTimes = () => {
+    setMaterials(prev =>
+      prev.map(m => ({ ...m, machiningTimes: {} }))
+    );
+    showToast('Todos os tempos de usinagem foram zerados.');
+  };
+
+  // Add Custom Internal Service
+  const handleAddInternalService = (newItem: InternalServiceItem) => {
+    setInternalServices(prev => [...prev, newItem]);
+    showToast(`Atividade "${newItem.name}" adicionada com sucesso!`);
+  };
+
+  // Delete Internal Service
+  const handleDeleteInternalService = (id: string) => {
+    setInternalServices(prev => prev.filter(item => item.id !== id));
+    showToast('Atividade de serviço interno excluída com sucesso.', 'info');
+  };
+
+  // Third-party Update
+  const handleUpdateThirdParty = (id: string, updated: Partial<ThirdPartyItem>) => {
+    setThirdPartyItems(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...updated } : item))
+    );
+  };
+
+  const handleAddThirdParty = (newItem: { description: string; qtd: number; valUnit: number }) => {
+    const id = `tp_custom_${Date.now()}`;
+    setThirdPartyItems(prev => [
+      ...prev,
+      {
+        id,
+        description: newItem.description,
+        qtd: newItem.qtd,
+        valUnit: newItem.valUnit,
+        total: newItem.qtd * newItem.valUnit,
+      },
+    ]);
+    showToast(`Item "${newItem.description}" adicionado com sucesso.`);
+  };
+
+  const handleDeleteThirdParty = (id: string) => {
+    setThirdPartyItems(prev => prev.filter(item => item.id !== id));
+    showToast('Componente terceirizado removido.');
+  };
+
+  // Internal Services Update
+  const handleUpdateInternalService = (id: string, updated: Partial<InternalServiceItem>) => {
+    setInternalServices(prev =>
+      prev.map(item => (item.id === id ? { ...item, ...updated } : item))
+    );
+  };
+
+  // Save Config parameters
+  const handleSaveConfig = (newConfig: ConfigParams) => {
+    setConfig(newConfig);
+    localStorage.setItem('mold_config', JSON.stringify(newConfig));
+    showToast('Configurações salvas e aplicadas com sucesso.');
+  };
+
+  const handleSaveServiceRates = async (newRates: InternalServiceItem[]) => {
+    setInternalServices(prev =>
+      prev.map((item) => {
+        const found = newRates.find(r => r.id === item.id);
+        if (found) {
+          const valUnit = found.valUnit;
+          return { ...item, valUnit, total: item.qtd * valUnit };
+        }
+        return item;
+      })
+    );
+    localStorage.setItem('orcamolde_service_rates', JSON.stringify(newRates));
+    if (isSupabaseConfigured) {
+      try {
+        await syncSaveServices(newRates);
+      } catch (e) {
+        console.error('Erro ao salvar taxas no Supabase:', e);
+      }
+    }
+  };
+
+  // Save raw materials
+  const handleSaveRawMaterials = async (newRawMaterials: RawMaterial[]) => {
+    setRawMaterials(newRawMaterials);
+    localStorage.setItem('orcamolde_raw_materials', JSON.stringify(newRawMaterials));
+    if (isSupabaseConfigured) {
+      try {
+        await syncSaveRawMaterials(newRawMaterials);
+      } catch (e) {
+        console.error('Erro ao salvar matérias primas no Supabase:', e);
+      }
+    }
+    showToast('Matérias-primas salvas e aplicadas com sucesso.');
+  };
+
+  // Reset to original factory parameters
+  const handleResetToDefaults = () => {
+    setConfig({ ...DEFAULT_CONFIG });
+    localStorage.setItem('mold_config', JSON.stringify(DEFAULT_CONFIG));
+
+    setRawMaterials(DEFAULT_RAW_MATERIALS);
+    localStorage.setItem('orcamolde_raw_materials', JSON.stringify(DEFAULT_RAW_MATERIALS));
+
+    // Reset internal service rates to defaults
+    const defaultRates = DEFAULT_INTERNAL_SERVICES.map((item, index) => ({
+      ...item,
+      id: `srv_${index}`,
+      total: 0,
+    }));
+    localStorage.setItem('orcamolde_service_rates', JSON.stringify(defaultRates));
+
+    setInternalServices(prev =>
+      prev.map((item) => {
+        const d = DEFAULT_INTERNAL_SERVICES.find(x => x.name === item.name);
+        if (d) {
+          return { ...item, valUnit: d.valUnit, total: item.qtd * d.valUnit };
+        }
+        return item;
+      })
+    );
+
+    showToast('Configurações redefinidas para o padrão de fábrica.', 'success');
+  };
+
+  // Save draft locally to localStorage
+  const handleSaveDraft = async () => {
+    const isEditing = activeDraftId !== null;
+    const targetId = activeDraftId || `draft_${Date.now()}`;
+
+    const newDraft: BudgetDraft = {
+      id: targetId,
+      reference,
+      clientName,
+      contactName,
+      moldType,
+      moldingMaterial,
+      productQuantity,
+      deliveryTime,
+      observations,
+      status,
+      moldDescription,
+      date,
+      moldWidth,
+      moldLength,
+      materials,
+      thirdPartyItems,
+      internalServices,
+      config,
+      discountPercent,
+      discountValue,
+      totals,
+      machiningTypes,
+    };
+
+    let updatedDrafts: BudgetDraft[];
+    if (isEditing) {
+      updatedDrafts = drafts.map(d => d.id === targetId ? newDraft : d);
+    } else {
+      updatedDrafts = [newDraft, ...drafts];
+    }
+
+    setDrafts(updatedDrafts);
+    localStorage.setItem('mold_drafts', JSON.stringify(updatedDrafts));
+    
+    if (isSupabaseConfigured) {
+      try {
+        await syncSaveBudget(newDraft);
+      } catch (e) {
+        console.error('Erro ao salvar orçamento no Supabase:', e);
+        showToast('Salvo localmente, erro de sincronização com Supabase', 'error');
+      }
+    }
+
+    if (isEditing) {
+      showToast('Alterações salvas no orçamento existente com sucesso!', 'success');
+    } else {
+      // Auto increment reference code only for NEW budgets
+      const nextRef = generateNextReference(updatedDrafts);
+      setReference(nextRef);
+      // Set the newly saved draft as active so they can continue editing it
+      setActiveDraftId(targetId);
+      showToast('Orçamento salvo no histórico com sucesso!', 'success');
+    }
+  };
+
+  // Load draft from history
+  const handleLoadDraft = (selected: BudgetDraft) => {
+    setActiveDraftId(selected.id);
+    setClientName(selected.clientName);
+    setContactName(selected.contactName || '');
+    setMoldType(selected.moldType || '');
+    setMoldingMaterial(selected.moldingMaterial || '');
+    setProductQuantity(selected.productQuantity !== undefined ? selected.productQuantity : 1000);
+    setDeliveryTime(selected.deliveryTime || '');
+    setObservations(selected.observations || '');
+    setStatus(selected.status || 'draft');
+    setMoldDescription(selected.moldDescription);
+    setDate(selected.date);
+    setMoldWidth(selected.moldWidth);
+    setMoldLength(selected.moldLength);
+    setMaterials(selected.materials);
+    setThirdPartyItems(selected.thirdPartyItems);
+    setReference(selected.reference || '');
+    setDiscountPercent(selected.discountPercent || 0);
+    setDiscountValue(selected.discountValue || 0);
+    
+    // Safety check for legacy or mismatched service structures
+    setInternalServices(
+      selected.internalServices.map(item => {
+        // Ensure rates align with active values if missing
+        return {
+          ...item,
+          total: item.qtd * item.valUnit,
+        };
+      })
+    );
+
+    if (selected.config) {
+      setConfig(selected.config);
+    }
+
+    if (selected.machiningTypes) {
+      setMachiningTypes(selected.machiningTypes);
+    }
+
+    showToast(`Orçamento de "${selected.clientName}" carregado com sucesso!`, 'info');
+  };
+
+  // Delete draft from history
+  const handleDeleteDraft = async (id: string) => {
+    const updated = drafts.filter(d => d.id !== id);
+    setDrafts(updated);
+    localStorage.setItem('mold_drafts', JSON.stringify(updated));
+    if (id === activeDraftId) {
+      setActiveDraftId(null);
+    }
+    if (isSupabaseConfigured) {
+      try {
+        await syncDeleteBudget(id);
+      } catch (e) {
+        console.error('Erro ao deletar orçamento no Supabase:', e);
+      }
+    }
+    showToast('Orçamento excluído do histórico.');
+  };
+
+  // Clear current active quote editor
+  const handleClearForm = () => {
+    setActiveDraftId(null);
+    setClientName('');
+    setContactName('');
+    setMoldType('');
+    setMoldingMaterial('');
+    setProductQuantity(1000);
+    setDeliveryTime('');
+    setObservations('');
+    setStatus('draft');
+    setMoldDescription('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setMoldWidth(0);
+    setMoldLength(0);
+    setDiscountPercent(0);
+    setDiscountValue(0);
+
+    // Re-initialize materials to defaults
+    const cleanMats = generateZeroMaterials(config, rawMaterials);
+    setMaterials(cleanMats);
+
+    // Re-initialize services and third party to 0 quantities
+    setThirdPartyItems(prev => prev.map(item => ({ ...item, qtd: 0, total: 0 })));
+    setInternalServices(prev => prev.map(item => ({ ...item, qtd: 0, total: 0 })));
+
+    showToast('Formulário limpo com sucesso.');
+  };
+
+  // --- GERAL NOVO (CLEAN BLANK START) ---
+  const handleGeralNovo = () => {
+    setActiveDraftId(null);
+    setClientName('');
+    setContactName('');
+    setMoldType('');
+    setMoldingMaterial('');
+    setProductQuantity(1000);
+    setDeliveryTime('');
+    setObservations('');
+    setStatus('draft');
+    setMoldDescription('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setMoldWidth(0);
+    setMoldLength(0);
+    setDiscountPercent(0);
+    setDiscountValue(0);
+
+    // Re-initialize materials to defaults (clean slate at 0x0)
+    const cleanMats = generateZeroMaterials(config, rawMaterials);
+    setMaterials(cleanMats);
+
+    // Re-initialize services and third party to 0 quantities
+    setThirdPartyItems(prev => prev.map(item => ({ ...item, qtd: 0, total: 0 })));
+    setInternalServices(prev => prev.map(item => ({ ...item, qtd: 0, total: 0 })));
+
+    // Generate the next reference code dynamically from current drafts list
+    const nextRef = generateNextReference(drafts);
+    setReference(nextRef);
+
+    // Switch to first tab and focus the first editable field (Nome do Cliente)
+    setActiveTab('dados');
+    setTimeout(() => {
+      document.getElementById('client-name-input')?.focus();
+    }, 150);
+
+    showToast('Novo orçamento ("Geral Novo") iniciado em branco.', 'success');
+  };
+
+  // PDF Export Trigger
+  const handleExportPDF = () => {
+    const draft: BudgetDraft = {
+      id: `draft_temp_${Date.now()}`,
+      reference,
+      clientName,
+      contactName,
+      moldType,
+      moldingMaterial,
+      productQuantity,
+      deliveryTime,
+      observations,
+      status,
+      moldDescription,
+      date,
+      moldWidth,
+      moldLength,
+      materials,
+      thirdPartyItems,
+      internalServices,
+      config,
+      discountPercent,
+      discountValue,
+      totals,
+      machiningTypes,
+    };
+    generateBudgetPDF(draft);
+    showToast('Relatório PDF exportado com sucesso!');
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col justify-center relative overflow-y-auto py-10">
+        {toastMessage && (
+          <div className="fixed bottom-10 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-slate-900 text-white animate-bounce-short">
+            <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+            <span className="text-xs font-semibold">{toastMessage.text}</span>
+          </div>
+        )}
+        
+        {accessBlockedMsg && (
+          <div className="max-w-md mx-auto w-full px-4 mb-4 z-20">
+            <div className="bg-red-550/10 border border-red-500/20 p-4 rounded-2xl text-red-200 text-xs flex flex-col gap-2.5 shadow-lg backdrop-blur-md">
+              <div className="flex items-start gap-2.5">
+                <span className="text-base shrink-0">🚫</span>
+                <div>
+                  <h4 className="font-extrabold text-red-400 uppercase tracking-wider text-[10px] font-heading">Acesso Reservado</h4>
+                  <p className="mt-1 leading-relaxed text-slate-300">
+                    {accessBlockedMsg}
+                  </p>
+                  <p className="mt-1 text-[10px] text-slate-400 leading-normal">
+                    Este aplicativo é comercializado de forma privada pela <strong>Axemet Solution LTDA</strong>. O administrador principal de sua organização deve aprovar e atribuir as suas permissões antes que você possa navegar.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <LoginScreen onLogin={handleLoginAttempt} />
+
+        {/* Render SQL guide modal here so it can be opened from login screen */}
+        {showSchemaGuide && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl text-white overflow-hidden">
+              {/* Header */}
+              <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🛠️</span>
+                  <div>
+                    <h3 className="font-bold text-sm uppercase tracking-wider text-[#EA580C]">Configuração de Banco de Dados</h3>
+                    <p className="text-[10px] text-slate-400">Como inicializar o seu banco de dados Supabase</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowSchemaGuide(false)}
+                  className="text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-slate-800"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Body */}
+              <div className="p-5 overflow-y-auto space-y-4 flex-1 text-xs text-slate-300">
+                <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-2">
+                  <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-orange-400">Passos para Configuração:</h4>
+                  <ol className="list-decimal list-inside space-y-1.5 text-slate-300 pl-1">
+                    <li>Acesse o seu painel do <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline font-bold">Supabase Console</a>.</li>
+                    <li>Selecione o seu projeto correspondente.</li>
+                    <li>No menu lateral esquerdo, clique em <strong>SQL Editor</strong> (ícone de terminal/documento).</li>
+                    <li>Clique em <strong>"New query"</strong> (ou "New Blank Query").</li>
+                    <li>Cole o código SQL abaixo no editor e clique no botão <strong>"Run"</strong> no canto inferior direito.</li>
+                  </ol>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Script SQL de Inicialização</span>
+                    <button
+                      onClick={handleCopySQL}
+                      className="px-3 py-1 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition flex items-center gap-1 cursor-pointer"
+                    >
+                      {copied ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          Copiado!
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          Copiar Código
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <pre className="bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-[10px] overflow-auto max-h-60 text-slate-300 select-all leading-normal whitespace-pre">
+                      {MIGRATION_SQL}
+                    </pre>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="p-4 bg-slate-950/40 border-t border-slate-800 flex justify-end">
+                <button
+                  onClick={() => setShowSchemaGuide(false)}
+                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex flex-col md:flex-row">
+      
+      {/* Toast Notification Banner */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-slate-900 text-white animate-fadeIn">
+          <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+          <span className="text-xs font-semibold">{toastMessage.text}</span>
+        </div>
+      )}
+
+      {/* DESKTOP INDUSTRIAL FUNNEL SIDEBAR */}
+      <aside className="hidden md:flex flex-col w-72 bg-[#0F2A43] text-slate-100 border-r border-[#1A3F6F] shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
+        {/* Brand/Logo */}
+        <div className="p-5 border-b border-[#1A3F6F] flex items-center gap-3 bg-[#0B1E30]">
+          <div className="w-10 h-10 bg-[#2563A8] rounded-xl flex items-center justify-center font-black text-sm text-white border-2 border-[#C8A435] shadow-lg">
+            MX
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">MATRIX SYSTEM</span>
+            <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase mt-1 leading-none">
+              Gestão Industrial
+            </span>
+          </div>
+        </div>
+
+        {/* Current Org Indicator */}
+        <div className="px-5 py-3 bg-[#0A2237] border-b border-[#1A3F6F] flex items-center justify-between text-[11px] text-slate-300">
+          <div className="flex items-center gap-1.5">
+            <Building className="w-3.5 h-3.5 text-[#C8A435]" />
+            <span>Unidade: <strong className="text-white">MATRIZ ALPHA</strong></span>
+          </div>
+          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono text-[9px] font-bold">● ONLINE</span>
+        </div>
+
+        {/* Funnel Sections */}
+        <div className="flex-1 px-3 py-4 space-y-4 text-xs font-semibold">
+          
+          {/* Section: VISÃO GERAL */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-[#C8A435] uppercase tracking-widest block px-2 mb-1.5 opacity-80">Visão Geral</span>
+            <button
+              onClick={() => setAppView('modulo11')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo11' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-[#C8A435] shrink-0" />
+              <span>Dashboard 360°</span>
+              <span className="ml-auto text-[8px] px-1 py-0.2 rounded bg-[#0B1E30] text-slate-300 font-mono">Real-time</span>
+            </button>
+          </div>
+
+          {/* Section: COMERCIAL */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">1. Comercial & Vendas</span>
+            <button
+              onClick={() => setAppView('crm')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'crm' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4 text-orange-400 shrink-0" />
+              <span>Funil de Vendas CRM</span>
+            </button>
+            <button
+              onClick={() => setAppView('home')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'home' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>Orçamentos & Custos</span>
+            </button>
+            <button
+              onClick={() => setAppView('clientes')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'clientes' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4 text-sky-400 shrink-0" />
+              <span>Banco de Clientes</span>
+            </button>
+          </div>
+
+          {/* Section: ENGENHARIA */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">2. Engenharia</span>
+            <button
+              onClick={() => setAppView('modulo2')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo2' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Cpu className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Projetos & BOM</span>
+            </button>
+          </div>
+
+          {/* Section: PCP */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">3. Planejamento PCP</span>
+            <button
+              onClick={() => setAppView('modulo3')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo3' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Clock className="w-4 h-4 text-yellow-400 shrink-0" />
+              <span>Gantt & Programação</span>
+            </button>
+          </div>
+
+          {/* Section: ALMOXARIFADO */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">4. Suprimentos</span>
+            <button
+              onClick={() => setAppView('modulo4')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo4' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Layers className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>Estoque & Chapas</span>
+            </button>
+            <button
+              onClick={() => setAppView('modulo9')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo9' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Briefcase className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span>Compras Triple-Vendor</span>
+            </button>
+          </div>
+
+          {/* Section: CHÃO DE FÁBRICA */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">5. Manufatura</span>
+            <button
+              onClick={() => setAppView('modulo5')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo5' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Activity className="w-4 h-4 text-blue-400 shrink-0" />
+              <span>Chão de Fábrica OS</span>
+            </button>
+            <button
+              onClick={() => setAppView('modulo6')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo6' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Qualidade & RNC</span>
+            </button>
+          </div>
+
+          {/* Section: CONTROLADORIA */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">6. Controladoria</span>
+            <button
+              onClick={() => setAppView('modulo7')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo7' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <DollarSign className="w-4 h-4 text-amber-500 shrink-0" />
+              <span>Custos Radar (Orç vs Real)</span>
+            </button>
+            <button
+              onClick={() => setAppView('modulo8')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo8' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Save className="w-4 h-4 text-green-400 shrink-0" />
+              <span>Financeiro & DRE</span>
+            </button>
+          </div>
+
+          {/* Section: PÓS-ENTREGA */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">7. Operação em Campo</span>
+            <button
+              onClick={() => setAppView('modulo10')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'modulo10' 
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-orange-400 shrink-0" />
+              <span>Manutenção & Ciclos</span>
+            </button>
+          </div>
+
+          {/* Section: ADMIN */}
+          {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
+            <div className="space-y-1">
+              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">Configurações & Admin</span>
+              <button
+                onClick={() => setAppView('organizacao')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                  appView === 'organizacao' 
+                    ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                    : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                }`}
+              >
+                <Building className="w-4 h-4 text-indigo-400 shrink-0" />
+                <span>Minha Organização</span>
+              </button>
+              <button
+                onClick={() => setAppView('acessos')}
+                className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                  appView === 'acessos' 
+                    ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
+                    : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                }`}
+              >
+                <Shield className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>Gestão de Acessos</span>
+              </button>
+            </div>
+          )}
+
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-4 border-t border-[#1A3F6F] space-y-2 bg-[#0B1E30] text-[11px] font-bold">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="w-full text-left px-3 py-2 text-slate-300 hover:text-white hover:bg-[#1A3F6F]/40 rounded-lg transition flex items-center gap-2 cursor-pointer"
+          >
+            <Settings className="w-4 h-4 text-slate-400" />
+            Parâmetros do Sistema
+          </button>
+          <button
+            onClick={handleLogout}
+            className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg transition flex items-center gap-2 cursor-pointer"
+          >
+            <LogOut className="w-4 h-4 text-red-500" />
+            Sair do ERP
+          </button>
+        </div>
+      </aside>
+
+      {/* MOBILE RESPONSIVE HEADER & SELECTOR */}
+      <header className="md:hidden bg-[#0F2A43] border-b-2 border-[#C8A435] text-white sticky top-0 z-45 p-4 flex flex-col gap-3 shadow-md">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-[#2563A8] rounded-lg flex items-center justify-center font-black text-xs text-white border border-[#C8A435]">
+              MX
+            </div>
+            <div>
+              <span className="text-[8px] font-black tracking-widest text-[#C8A435] uppercase block leading-none">MATRIX SYSTEM</span>
+              <span className="text-[10px] font-black text-slate-100 uppercase block leading-none">Gestão Industrial</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="p-1.5 text-slate-300 hover:text-white bg-[#1A3F6F] rounded-lg transition border border-[#2563A8]"
+              title="Ajustar Parâmetros"
+            >
+              <Settings className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleLogout}
+              className="p-1.5 text-red-400 hover:text-red-300 bg-red-950/20 rounded-lg transition border border-red-900/30"
+              title="Sair"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Responsive Dropdown Selector for Funnel Stages */}
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-bold text-slate-400 shrink-0">Navegar Funil:</span>
+          <select
+            value={appView}
+            onChange={(e) => setAppView(e.target.value as any)}
+            className="flex-1 bg-slate-900 border border-slate-750 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+          >
+            <option value="modulo11">📊 Dashboard 360°</option>
+            <optgroup label="1. COMERCIAL">
+              <option value="crm">💼 Funil de Vendas CRM</option>
+              <option value="home">📋 Orçamentos & Custos</option>
+              <option value="clientes">👥 Banco de Clientes</option>
+            </optgroup>
+            <optgroup label="2. ENGENHARIA">
+              <option value="modulo2">🔧 Projetos & BOM (M2)</option>
+            </optgroup>
+            <optgroup label="3. PCP">
+              <option value="modulo3">📅 Gantt & PCP (M3)</option>
+            </optgroup>
+            <optgroup label="4. SUPRIMENTOS">
+              <option value="modulo4">📦 Estoque & Chapas (M4)</option>
+              <option value="modulo9">🛒 Compras Triple-Vendor (M9)</option>
+            </optgroup>
+            <optgroup label="5. MANUFATURA">
+              <option value="modulo5">🏭 Chão de Fábrica OS (M5)</option>
+              <option value="modulo6">✅ Qualidade & RNC (M6)</option>
+            </optgroup>
+            <optgroup label="6. CONTROLADORIA">
+              <option value="modulo7">📊 Custos Radar (M7)</option>
+              <option value="modulo8">💰 Financeiro e DRE (M8)</option>
+            </optgroup>
+            <optgroup label="7. CAMPO">
+              <option value="modulo10">🔧 Manutenção & Ciclos (M10)</option>
+            </optgroup>
+            {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
+              <optgroup label="ADMIN">
+                <option value="organizacao">⚙️ Minha Organização</option>
+                <option value="acessos">🔒 Gestão de Acessos</option>
+              </optgroup>
+            )}
+          </select>
+        </div>
+      </header>
+
+      {/* RIGHT VIEWPORT CONTENT CONTAINER */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        
+        {/* DESKTOP METADATA TOP BAR */}
+        <header className="hidden md:flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 shadow-xs">
+          <div>
+            <span className="text-[9px] font-black text-[#1A3F6F] uppercase tracking-widest block leading-none">MATRIX SYSTEM • GESTÃO INDUSTRIAL</span>
+            <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-1 flex items-center gap-1.5 font-heading">
+              {appView === 'modulo11' && '📊 Dashboard 360°'}
+              {appView === 'crm' && '💼 Funil de Vendas CRM'}
+              {appView === 'home' && '📋 Orçamentos & Custos'}
+              {appView === 'editor' && '✍️ Editor de Orçamento'}
+              {appView === 'clientes' && '👥 Banco de Clientes'}
+              {appView === 'modulo2' && '🔧 Engenharia & BOM'}
+              {appView === 'modulo3' && '📅 Planejamento PCP'}
+              {appView === 'modulo4' && '📦 Almoxarifado e Estoque'}
+              {appView === 'modulo5' && '🏭 Terminal do Operador'}
+              {appView === 'modulo6' && '✅ Qualidade & RNC'}
+              {appView === 'modulo7' && '📊 Controladoria de Custos'}
+              {appView === 'modulo8' && '💰 Financeiro e DRE'}
+              {appView === 'modulo9' && '🛒 Compras Triple-Vendor'}
+              {appView === 'modulo10' && '🔧 Manutenção de Moldes'}
+              {appView === 'organizacao' && '⚙️ Configurações de Organização'}
+              {appView === 'acessos' && '🔒 Controle de Acessos'}
+            </h2>
+          </div>
+
+          {/* Quick Actions & Profiles */}
+          <div className="flex items-center gap-4 text-xs font-semibold">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
+              <span className="text-slate-600 font-bold">Unidade Alpha Matrix</span>
+            </div>
+            
+            <div className="text-right">
+              <span className="text-[#0F2A43] block font-black leading-none">{userProfile?.full_name || 'Filipe Santos'}</span>
+              <span className="text-[10px] text-[#C8A435] block mt-1 font-extrabold uppercase tracking-wide">
+                {userProfile?.role === 'admin' ? 'Super Admin' : userProfile?.role === 'manager' ? 'Gestor' : 'Colaborador de Setor'}
+              </span>
+            </div>
+          </div>
+        </header>
+
+        {/* CONTENT STAGE */}
+        <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1">
+
+
+        {/* 1. HOME SCREEN: List of Budgets */}
+        {appView === 'home' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Header / Hero Stats */}
+            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-6 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-8 opacity-5">
+                <Cpu className="w-40 h-40" />
+              </div>
+              <div className="relative z-10 space-y-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-extrabold tracking-widest text-[#EA580C] uppercase font-heading">Axemet Solution LTDA</span>
+                  <h2 className="text-xl sm:text-2xl font-black font-heading tracking-tight">Painel de Orçamentos de Moldes</h2>
+                  <p className="text-xs text-slate-300 max-w-xl font-medium leading-relaxed">
+                    Gerencie especificações técnicas, pesos de chapas, componentes padronizados, custos de matrizaria e margens de venda com o motor de Markup Divisor.
+                  </p>
+                </div>
+
+                {/* Dashboard Stats */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
+                  <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex flex-col justify-between min-h-[84px]">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total de Projetos</p>
+                    <p className="text-xl sm:text-2xl font-black font-heading text-white">{drafts.length}</p>
+                  </div>
+                  <div className="bg-amber-950/40 border border-amber-500/40 p-3.5 rounded-xl flex flex-col justify-between min-h-[84px]">
+                    <p className="text-[10px] font-bold text-amber-300 uppercase tracking-wider mb-1">Pendentes</p>
+                    <p className="text-xl sm:text-2xl font-black font-heading text-amber-300">
+                      {drafts.filter(d => d.status === 'pending').length}
+                    </p>
+                  </div>
+                  <div className="bg-emerald-950/40 border border-emerald-500/40 p-3.5 rounded-xl flex flex-col justify-between min-h-[84px]">
+                    <p className="text-[10px] font-bold text-emerald-300 uppercase tracking-wider mb-1">Aprovados</p>
+                    <p className="text-xl sm:text-2xl font-black font-heading text-emerald-300">
+                      {drafts.filter(d => d.status === 'approved').length}
+                    </p>
+                  </div>
+                  <div className="bg-indigo-950/40 border border-indigo-500/40 p-3.5 rounded-xl flex flex-col justify-between min-h-[84px]">
+                    <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-1">Faturamento Aprovado</p>
+                    <p className="text-base sm:text-lg font-black font-heading text-indigo-300 truncate">
+                      {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(
+                        drafts.filter(d => d.status === 'approved').reduce((acc, curr) => acc + (curr.totals?.finalPrice || 0), 0)
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick action: Create new budget */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h3 className="text-base font-extrabold text-slate-950 font-heading flex items-center gap-2">
+                <FileText className="w-5 h-5 text-[#EA580C]" />
+                Histórico de Orçamentos
+              </h3>
+              <button
+                onClick={() => {
+                  handleGeralNovo();
+                  setAppView('editor');
+                }}
+                className="px-5 py-2.5 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-xs rounded-xl shadow-md transition flex items-center justify-center gap-2 uppercase tracking-wider cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                Novo Orçamento
+              </button>
+            </div>
+
+            {/* Search & Filters block */}
+            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
+                {/* Search */}
+                <div className="md:col-span-6 relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <FolderOpen className="w-4 h-4 text-slate-400" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Buscar por cliente, molde ou referência..."
+                    value={homeSearchTerm}
+                    onChange={(e) => setHomeSearchTerm(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-950 placeholder-slate-400 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 focus:bg-white"
+                  />
+                </div>
+
+                {/* Filter Status */}
+                <div className="md:col-span-3">
+                  <select
+                    value={homeFilterStatus}
+                    onChange={(e) => setHomeFilterStatus(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-950 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 cursor-pointer focus:bg-white"
+                  >
+                    <option value="all">Todos os Status</option>
+                    <option value="draft">Rascunhos</option>
+                    <option value="pending">Pendentes</option>
+                    <option value="approved">Aprovados</option>
+                    <option value="rejected">Recusados</option>
+                  </select>
+                </div>
+
+                {/* Filter Client */}
+                <div className="md:col-span-3">
+                  <select
+                    value={homeFilterClient}
+                    onChange={(e) => setHomeFilterClient(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-950 focus:ring-2 focus:ring-orange-500 focus:border-orange-500 cursor-pointer focus:bg-white truncate"
+                  >
+                    <option value="all">Todos os Clientes</option>
+                    {Array.from(new Set(drafts.map(d => d.clientName))).filter(Boolean).map(client => (
+                      <option key={client} value={client}>{client}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* List of Orçamentos (Inspired by Soluções/Novidades horizontal blocks) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {drafts.filter(d => {
+                const matchesSearch = 
+                  d.clientName.toLowerCase().includes(homeSearchTerm.toLowerCase()) ||
+                  d.moldDescription.toLowerCase().includes(homeSearchTerm.toLowerCase()) ||
+                  (d.reference && d.reference.toLowerCase().includes(homeSearchTerm.toLowerCase()));
+                const matchesStatus = homeFilterStatus === 'all' || d.status === homeFilterStatus;
+                const matchesClient = homeFilterClient === 'all' || d.clientName === homeFilterClient;
+                return matchesSearch && matchesStatus && matchesClient;
+              }).length === 0 ? (
+                <div className="md:col-span-2 text-center py-16 bg-white border border-slate-200 rounded-2xl p-8 space-y-3">
+                  <FileText className="w-12 h-12 text-slate-300 mx-auto" />
+                  <p className="text-slate-500 text-sm font-medium">Nenhum orçamento encontrado com as especificações inseridas.</p>
+                  <button
+                    onClick={() => {
+                      setHomeSearchTerm('');
+                      setHomeFilterStatus('all');
+                      setHomeFilterClient('all');
+                    }}
+                    className="text-xs font-bold text-[#EA580C] hover:underline cursor-pointer"
+                  >
+                    Limpar Filtros de Busca
+                  </button>
+                </div>
+              ) : (
+                drafts.filter(d => {
+                  const matchesSearch = 
+                    d.clientName.toLowerCase().includes(homeSearchTerm.toLowerCase()) ||
+                    d.moldDescription.toLowerCase().includes(homeSearchTerm.toLowerCase()) ||
+                    (d.reference && d.reference.toLowerCase().includes(homeSearchTerm.toLowerCase()));
+                  const matchesStatus = homeFilterStatus === 'all' || d.status === homeFilterStatus;
+                  const matchesClient = homeFilterClient === 'all' || d.clientName === homeFilterClient;
+                  return matchesSearch && matchesStatus && matchesClient;
+                }).map((draft) => {
+                  const statusColors = {
+                    draft: { bg: 'bg-slate-100 text-slate-800 border-slate-200', dot: 'bg-slate-400', bar: 'border-l-slate-400', label: 'Rascunho' },
+                    pending: { bg: 'bg-amber-100 text-amber-800 border-amber-200', dot: 'bg-amber-500', bar: 'border-l-[#EA580C]', label: 'Pendente' },
+                    approved: { bg: 'bg-emerald-100 text-emerald-800 border-emerald-200', dot: 'bg-emerald-500', bar: 'border-l-emerald-500', label: 'Aprovado' },
+                    rejected: { bg: 'bg-red-100 text-red-800 border-red-200', dot: 'bg-red-500', bar: 'border-l-red-500', label: 'Recusado' },
+                  };
+                  const currentStatus = statusColors[draft.status || 'draft'];
+
+                  return (
+                    <div
+                      key={draft.id}
+                      className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden flex flex-col justify-between transition-all duration-200 hover:shadow-md hover:border-slate-300 border-l-4 ${currentStatus.bar} group`}
+                    >
+                      {/* Card Header */}
+                      <div className="p-4 pb-2 flex items-center justify-between border-b border-slate-100 bg-slate-50/50">
+                        <span className="text-[11px] font-mono font-black text-slate-600">
+                          REF: {draft.reference || draft.id.slice(0, 8).toUpperCase()}
+                        </span>
+                        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${currentStatus.bg}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${currentStatus.dot}`} />
+                          {currentStatus.label}
+                        </div>
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 space-y-3 flex-1">
+                        <div>
+                          <h4 className="text-sm font-black text-slate-900 font-heading uppercase tracking-tight line-clamp-1">
+                            {draft.clientName || 'CLIENTE NÃO CADASTRADO'}
+                          </h4>
+                          <p className="text-xs text-slate-500 font-semibold line-clamp-1 mt-0.5">
+                            {draft.moldDescription || 'Sem descrição do molde'}
+                          </p>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-2 gap-y-1 text-[11px] text-slate-500 font-medium font-sans pt-1 border-t border-slate-50">
+                          <div>
+                            <span className="text-slate-400 font-semibold uppercase text-[9px] block font-heading">Molde / Injeção</span>
+                            <span className="text-slate-700 font-bold truncate block">{draft.moldType || 'Plástico Injeção'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-semibold uppercase text-[9px] block font-heading">Matéria-Prima</span>
+                            <span className="text-slate-700 font-bold truncate block">{draft.moldingMaterial || 'N/A'}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-semibold uppercase text-[9px] block font-heading">Quantidade / Prazo</span>
+                            <span className="text-slate-700 font-bold block">
+                              {draft.productQuantity !== undefined ? new Intl.NumberFormat('pt-BR').format(draft.productQuantity) : '1.000'} pçs / {draft.deliveryTime || '45d'}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-slate-400 font-semibold uppercase text-[9px] block font-heading">Dimensões Molde</span>
+                            <span className="text-slate-700 font-bold block font-mono">
+                              {draft.moldWidth || 0} x {draft.moldLength || 0} mm
+                            </span>
+                          </div>
+                        </div>
+
+                        {draft.observations && (
+                          <p className="text-[10px] text-slate-400 bg-slate-50 p-2 rounded-lg line-clamp-2 italic font-sans">
+                            Obs: {draft.observations}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Card Footer */}
+                      <div className="p-4 pt-2 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between gap-2">
+                        <div>
+                          <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider font-heading">Preço Comercial final</span>
+                          <span className="text-sm font-black text-[#EA580C] font-mono">
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(draft.totals.finalPrice)}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          {/* Quick Export PDF */}
+                          <button
+                            onClick={() => {
+                              generateBudgetPDF(draft);
+                              showToast('Orçamento exportado em PDF com sucesso!', 'success');
+                            }}
+                            className="p-2 text-slate-500 hover:text-[#EA580C] hover:bg-orange-50 rounded-lg transition cursor-pointer"
+                            title="Exportar PDF do Orçamento"
+                          >
+                            <FileDown className="w-4 h-4" />
+                          </button>
+
+                          {/* Quick Delete */}
+                          {confirmDeleteDraftId === draft.id ? (
+                            <div className="flex items-center gap-1 bg-red-50 p-1 rounded-lg border border-red-200">
+                              <span className="text-[9px] font-bold text-red-700 px-1">Excluir?</span>
+                              <button
+                                onClick={() => {
+                                  handleDeleteDraft(draft.id);
+                                  setConfirmDeleteDraftId(null);
+                                }}
+                                className="px-2 py-1 bg-red-600 text-white rounded text-[9px] font-bold hover:bg-red-700 transition cursor-pointer"
+                              >
+                                Sim
+                              </button>
+                              <button
+                                onClick={() => setConfirmDeleteDraftId(null)}
+                                className="px-2 py-1 bg-white border border-slate-200 text-slate-700 rounded text-[9px] font-bold hover:bg-slate-50 transition cursor-pointer"
+                              >
+                                Não
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setConfirmDeleteDraftId(draft.id);
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition cursor-pointer"
+                              title="Excluir Orçamento"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+
+                          {/* Primary CTA (Identical to site's CTA button) */}
+                          <button
+                            onClick={() => {
+                              handleLoadDraft(draft);
+                              setAppView('editor');
+                            }}
+                            className="px-3.5 py-1.5 bg-[#EA580C] hover:bg-[#C2410C] text-white text-[11px] font-extrabold rounded-lg transition duration-150 uppercase shadow-xs flex items-center gap-1 cursor-pointer"
+                          >
+                            Acessar
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop and Mobile Floating Button */}
+            <button
+              onClick={() => {
+                handleGeralNovo();
+                setAppView('editor');
+              }}
+              className="fixed bottom-24 right-6 md:bottom-10 z-50 w-14 h-14 bg-[#EA580C] hover:bg-[#C2410C] text-white rounded-full flex items-center justify-center shadow-2xl transition duration-300 hover:scale-105 cursor-pointer"
+              title="Iniciar Novo Orçamento"
+            >
+              <Plus className="w-6 h-6 text-white" />
+            </button>
+          </div>
+        )}
+
+        {/* 2. EDITOR SCREEN: Pricing & Technical Config */}
+        {appView === 'editor' && (
+          <div className="space-y-6 animate-fadeIn pb-12">
+            
+            {/* Editor Control Header */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 bg-slate-900 rounded-xl flex items-center justify-center text-white">
+                  <Cpu className="w-4.5 h-4.5 text-[#EA580C]" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 uppercase font-heading tracking-tight">
+                    {clientName ? `Cálculo Técnico: ${clientName}` : 'Configuração de Orçamento Técnico'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 font-mono font-bold">
+                    REF: {reference || 'RASCUNHO AUTOMÁTICO'} • DATA: {new Date(date).toLocaleDateString('pt-BR')}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+                <button
+                  onClick={() => setAppView('home')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold transition cursor-pointer"
+                >
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                  Voltar
+                </button>
+                <button
+                  onClick={handleClearForm}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-600 hover:bg-slate-50 rounded-lg text-xs font-semibold transition cursor-pointer"
+                  title="Limpar campos"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+                  Limpar
+                </button>
+                <button
+                  onClick={handleSaveDraft}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  Salvar
+                </button>
+                <button
+                  onClick={handleExportPDF}
+                  className="flex items-center gap-1.5 px-4 py-1.5 bg-[#EA580C] hover:bg-[#C2410C] text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  PDF
+                </button>
+              </div>
+            </div>
+
+            {/* Stepper sector tabs */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 bg-white p-2 rounded-xl border border-slate-200 shadow-2xs">
+              {[
+                { id: 'dados', label: '1. Dados & Molde', icon: Ruler, description: 'Molde e cliente' },
+                { id: 'materiais', label: '2. Chapas & Aço', icon: Layers, description: 'Peso e cubagem', amount: totals.materialsTotal },
+                { id: 'tempos', label: '3. Tempos Usinagem', icon: Clock, description: 'Alimentador de serviços', amount: machiningTotal },
+                { id: 'terceiros', label: '4. Componentes', icon: Cpu, description: 'Acessórios e terceiros', amount: totals.thirdPartyTotal },
+                { id: 'servicos', label: '5. Serviços', icon: Briefcase, description: 'Usinagem e matrizaria', amount: totals.internalTotal },
+                { id: 'resumo', label: '6. Comercial', icon: TrendingUp, description: 'Preço final e taxas', amount: totals.finalPrice },
+                { id: 'clientes', label: '7. Clientes', icon: Users, description: 'Vincular cliente' },
+              ].map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`text-left p-3 rounded-lg border transition duration-200 cursor-pointer flex flex-col justify-between ${
+                      isActive
+                        ? 'bg-slate-900 border-slate-900 text-white shadow-xs'
+                        : 'bg-slate-50/50 border-slate-200/80 text-slate-800 hover:bg-slate-50 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#EA580C]' : 'text-slate-500'}`} />
+                      <span className="text-xs font-bold tracking-tight truncate">{tab.label}</span>
+                    </div>
+                    <p className={`text-[9px] mt-1 truncate ${isActive ? 'text-slate-400' : 'text-slate-400 font-medium'}`}>
+                      {tab.description}
+                    </p>
+                    {tab.amount !== undefined && (
+                      <div className={`text-xs font-bold mt-2 font-mono ${isActive ? 'text-white' : 'text-slate-900'}`}>
+                        {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(tab.amount)}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* TAB CORRESPONDENT COMPONENT */}
+            <div className="space-y-6">
+              
+              {/* Section A: Mold Inputs */}
+              {activeTab === 'dados' && (
+                <section id="secao-dados-molde">
+                  <MoldInputs
+                    reference={reference}
+                    onReferenceChange={setReference}
+                    clientName={clientName}
+                    onClientNameChange={setClientName}
+                    contactName={contactName}
+                    onContactNameChange={setContactName}
+                    moldType={moldType}
+                    onMoldTypeChange={setMoldType}
+                    moldingMaterial={moldingMaterial}
+                    onMoldingMaterialChange={setMoldingMaterial}
+                    productQuantity={productQuantity}
+                    onProductQuantityChange={setProductQuantity}
+                    deliveryTime={deliveryTime}
+                    onDeliveryTimeChange={setDeliveryTime}
+                    observations={observations}
+                    onObservationsChange={setObservations}
+                    status={status}
+                    onStatusChange={setStatus}
+                    moldDescription={moldDescription}
+                    onMoldDescriptionChange={setMoldDescription}
+                    date={date}
+                    onDateChange={setDate}
+                    clients={clients}
+                    onAddClient={handleAddClient}
+                    onViewClientsTab={() => setActiveTab('clientes')}
+                  />
+                </section>
+              )}
+
+              {/* Section B: Materials */}
+              {activeTab === 'materiais' && (
+                <section id="secao-materiais">
+                  <MaterialsTable
+                    materials={materials}
+                    onUpdateMaterial={handleUpdateMaterial}
+                    onAddMaterial={handleAddMaterial}
+                    onDeleteMaterial={handleDeleteMaterial}
+                    materialsTotal={totals.materialsTotal}
+                    moldWidth={moldWidth}
+                    onMoldWidthChange={setMoldWidth}
+                    moldLength={moldLength}
+                    onMoldLengthChange={setMoldLength}
+                    rawMaterials={rawMaterials}
+                  />
+                </section>
+              )}
+
+              {/* Section B.5: Machining Times */}
+              {activeTab === 'tempos' && (
+                <section id="secao-tempos-usinagem">
+                  <MachiningTimesTable
+                    materials={materials}
+                    machiningTypes={machiningTypes}
+                    onUpdateMaterialTimes={handleUpdateMaterialTimes}
+                    onClearAllTimes={handleClearAllMachiningTimes}
+                  />
+                </section>
+              )}
+
+              {/* Section C: Third Party Components */}
+              {activeTab === 'terceiros' && (
+                <section id="secao-terceiros">
+                  <ThirdPartyTable
+                    items={thirdPartyItems}
+                    onUpdateItem={handleUpdateThirdParty}
+                    onAddItem={handleAddThirdParty}
+                    onDeleteItem={handleDeleteThirdParty}
+                    thirdPartyTotal={totals.thirdPartyTotal}
+                  />
+                </section>
+              )}
+
+              {/* Section D: Internal Services */}
+              {activeTab === 'servicos' && (
+                <section id="secao-servicos-internos">
+                  <InternalServicesTable
+                    services={internalServices}
+                    onUpdateService={handleUpdateInternalService}
+                    onAddService={handleAddInternalService}
+                    onDeleteService={handleDeleteInternalService}
+                    servicesTotal={totals.internalTotal}
+                    machiningTypes={machiningTypes}
+                  />
+                </section>
+              )}
+
+              {/* Section E: Final Closing commercial summary */}
+              {activeTab === 'resumo' && (
+                <section id="secao-resumo-comercial">
+                  <QuoteSummary
+                    totals={totals}
+                    config={config}
+                    onSaveDraft={handleSaveDraft}
+                    onExportPDF={handleExportPDF}
+                    discountPercent={discountPercent}
+                    onDiscountPercentChange={(val) => {
+                      setDiscountPercent(val);
+                      setDiscountValue(totals.finalPrice * (val / 100));
+                    }}
+                    discountValue={discountValue}
+                    onDiscountValueChange={(val) => {
+                      setDiscountValue(val);
+                      setDiscountPercent(totals.finalPrice > 0 ? (val / totals.finalPrice) * 100 : 0);
+                    }}
+                  />
+                </section>
+              )}
+
+              {/* Section F: Clients Database Selection */}
+              {activeTab === 'clientes' && (
+                <section id="secao-clientes-database">
+                  <ClientsDatabase
+                    clients={clients}
+                    onAddClient={handleAddClient}
+                    onDeleteClient={handleDeleteClient}
+                    onUpdateClient={handleUpdateClient}
+                    onSelectClient={(c) => {
+                      setClientName(c.name);
+                      setActiveTab('dados');
+                      showToast(`Cliente "${c.name}" selecionado para o orçamento!`, 'success');
+                    }}
+                    activeClientName={clientName}
+                  />
+                </section>
+              )}
+
+            </div>
+
+            {/* Progression Stepper Navigation */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-6 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+              <button
+                type="button"
+                disabled={activeTab === 'dados'}
+                onClick={() => {
+                  const order: typeof activeTab[] = ['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo', 'clientes'];
+                  const prevIdx = order.indexOf(activeTab) - 1;
+                  if (prevIdx >= 0) setActiveTab(order[prevIdx]);
+                }}
+                className={`flex items-center gap-1.5 px-4 py-2 border rounded-lg text-xs font-bold transition ${
+                  activeTab === 'dados'
+                    ? 'text-slate-300 border-slate-100 bg-slate-50/50 cursor-not-allowed'
+                    : 'text-slate-700 border-slate-200 hover:bg-slate-50 cursor-pointer'
+                }`}
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Setor Anterior
+              </button>
+              <div className="hidden sm:flex items-center gap-1.5">
+                {['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo', 'clientes'].map((step) => (
+                  <div 
+                    key={step} 
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      activeTab === step ? 'bg-[#EA580C] w-6' : 'bg-slate-200'
+                    }`} 
+                  />
+                ))}
+              </div>
+              <button
+                type="button"
+                disabled={activeTab === 'clientes'}
+                onClick={() => {
+                  const order: typeof activeTab[] = ['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo', 'clientes'];
+                  const nextIdx = order.indexOf(activeTab) + 1;
+                  if (nextIdx < order.length) setActiveTab(order[nextIdx]);
+                }}
+                className={`flex items-center gap-1.5 px-4 py-2 bg-[#EA580C] hover:bg-[#C2410C] text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer ${
+                  activeTab === 'clientes' ? 'opacity-50 cursor-not-allowed' : ''
+                }`}
+              >
+                Avançar Setor
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+          </div>
+        )}
+
+        {/* 3. CLIENTES SCREEN: Local bank database */}
+        {appView === 'clientes' && (
+          <div className="space-y-6 animate-fadeIn pb-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-black text-slate-900 font-heading uppercase tracking-tight">Banco de Dados Local de Clientes</h2>
+                <p className="text-xs text-slate-500">Cadastro de faturamento e dados cadastrais dos clientes ativos.</p>
+              </div>
+              <button
+                onClick={() => setAppView('home')}
+                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Voltar para Orçamentos
+              </button>
+            </div>
+
+            <ClientsDatabase
+              clients={clients}
+              onAddClient={handleAddClient}
+              onDeleteClient={handleDeleteClient}
+              onUpdateClient={handleUpdateClient}
+              onSelectClient={(c) => {
+                setClientName(c.name);
+                handleGeralNovo();
+                // Override newly reset name with selected client
+                setClientName(c.name);
+                setAppView('editor');
+                setActiveTab('dados');
+                showToast(`Orçamento para "${c.name}" iniciado.`, 'success');
+              }}
+              activeClientName={clientName}
+            />
+          </div>
+        )}
+
+        {/* 4. CRM PIPELINE SCREEN */}
+        {appView === 'crm' && (
+          <div className="space-y-6 animate-fadeIn pb-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-black text-slate-900 font-heading uppercase tracking-tight flex items-center gap-2">
+                  <TrendingUp className="w-5 h-5 text-orange-500" />
+                  Funil de Vendas CRM
+                </h2>
+                <p className="text-xs text-slate-500">Acompanhe e qualifique o andamento de suas propostas comerciais desde o primeiro contato.</p>
+              </div>
+              <button
+                onClick={() => setAppView('home')}
+                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Painel de Orçamentos
+              </button>
+            </div>
+
+            {/* Metrics cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Potencial em Negociação</p>
+                <p className="text-xl font-black text-[#EA580C] font-mono mt-1">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                    drafts.filter(d => d.status === 'pending' || d.status === 'draft').reduce((acc, curr) => acc + (curr.totals?.finalPrice || 0), 0)
+                  )}
+                </p>
+                <div className="h-1 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                  <div className="h-full bg-[#EA580C] w-[45%]" />
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Faturamento Ganho</p>
+                <p className="text-xl font-black text-emerald-600 font-mono mt-1">
+                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+                    drafts.filter(d => d.status === 'approved').reduce((acc, curr) => acc + (curr.totals?.finalPrice || 0), 0)
+                  )}
+                </p>
+                <div className="h-1 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                  <div className="h-full bg-emerald-500 w-[65%]" />
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Taxa de Conversão</p>
+                <p className="text-xl font-black text-indigo-600 font-sans mt-1">
+                  {drafts.length > 0 
+                    ? `${Math.round((drafts.filter(d => d.status === 'approved').length / drafts.length) * 100)}%`
+                    : '0%'
+                  }
+                </p>
+                <div className="h-1 bg-slate-100 rounded-full mt-2 overflow-hidden">
+                  <div 
+                    className="h-full bg-indigo-500" 
+                    style={{ width: drafts.length > 0 ? `${(drafts.filter(d => d.status === 'approved').length / drafts.length) * 100}%` : '0%' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Funnel Pipeline Columns */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 overflow-x-auto pb-4">
+              
+              {/* Col 1: Elaboração (Rascunhos) */}
+              <div className="bg-slate-100/60 border border-slate-200 rounded-xl p-3 min-w-[250px] space-y-3 flex flex-col">
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">1. Rascunhos / Contato</span>
+                  <span className="px-2 py-0.5 bg-slate-200 text-slate-700 text-[10px] font-bold rounded-full">
+                    {drafts.filter(d => d.status === 'draft' || !d.status).length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                  {drafts.filter(d => d.status === 'draft' || !d.status).map(draft => (
+                    <div key={draft.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-2xs hover:border-slate-300 transition space-y-2">
+                      <div className="flex justify-between items-start gap-1">
+                        <h4 className="text-xs font-bold text-slate-900 uppercase truncate" title={draft.clientName}>
+                          {draft.clientName || 'Cliente sem nome'}
+                        </h4>
+                      </div>
+                      <p className="text-[10px] text-slate-400 truncate leading-none">{draft.moldDescription || 'Molde Injeção'}</p>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-50">
+                        <span className="text-xs font-bold text-[#EA580C] font-mono">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(draft.totals?.finalPrice || 0)}
+                        </span>
+                        <button
+                          onClick={async () => {
+                            const updated = { ...draft, status: 'pending' as const };
+                            setDrafts(prev => prev.map(d => d.id === draft.id ? updated : d));
+                            if (isSupabaseConfigured) await syncSaveBudget(updated);
+                            showToast('Proposta enviada para Negociação!');
+                          }}
+                          className="px-2 py-1 bg-amber-500 hover:bg-amber-600 text-white font-bold text-[9px] uppercase rounded-md transition"
+                        >
+                          Negociar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Col 2: Negociação (Pendentes) */}
+              <div className="bg-amber-50/40 border border-amber-100 rounded-xl p-3 min-w-[250px] space-y-3 flex flex-col">
+                <div className="flex items-center justify-between border-b border-amber-200/60 pb-2">
+                  <span className="text-xs font-bold text-amber-700 uppercase tracking-wider">2. Em Negociação</span>
+                  <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-[10px] font-bold rounded-full">
+                    {drafts.filter(d => d.status === 'pending').length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                  {drafts.filter(d => d.status === 'pending').map(draft => (
+                    <div key={draft.id} className="bg-white p-3 rounded-lg border border-amber-200/50 shadow-2xs hover:border-amber-300 transition space-y-2">
+                      <h4 className="text-xs font-bold text-slate-900 uppercase truncate" title={draft.clientName}>
+                        {draft.clientName}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate leading-none">{draft.moldDescription || 'Molde Injeção'}</p>
+                      <div className="flex flex-col gap-1.5 pt-1.5 border-t border-slate-50">
+                        <span className="text-xs font-bold text-[#EA580C] font-mono">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(draft.totals?.finalPrice || 0)}
+                        </span>
+                        <div className="flex gap-1">
+                          <button
+                            onClick={async () => {
+                              const updated = { ...draft, status: 'approved' as const };
+                              setDrafts(prev => prev.map(d => d.id === draft.id ? updated : d));
+                              if (isSupabaseConfigured) await syncSaveBudget(updated);
+                              showToast('Proposta aprovada! Projeto enviado para Produção.', 'success');
+                            }}
+                            className="flex-1 px-1.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] uppercase rounded-md transition text-center"
+                          >
+                            Ganho 👍
+                          </button>
+                          <button
+                            onClick={async () => {
+                              const updated = { ...draft, status: 'rejected' as const };
+                              setDrafts(prev => prev.map(d => d.id === draft.id ? updated : d));
+                              if (isSupabaseConfigured) await syncSaveBudget(updated);
+                              showToast('Proposta recusada comercialmente.', 'info');
+                            }}
+                            className="px-1.5 py-1 bg-red-100 hover:bg-red-200 text-red-700 font-semibold text-[9px] uppercase rounded-md transition"
+                          >
+                            Perdido
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Col 3: Ganho (Aprovado) */}
+              <div className="bg-emerald-50/40 border border-emerald-100 rounded-xl p-3 min-w-[250px] space-y-3 flex flex-col">
+                <div className="flex items-center justify-between border-b border-emerald-200/60 pb-2">
+                  <span className="text-xs font-bold text-emerald-800 uppercase tracking-wider">3. Ganho / Aprovado</span>
+                  <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full">
+                    {drafts.filter(d => d.status === 'approved').length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                  {drafts.filter(d => d.status === 'approved').map(draft => (
+                    <div key={draft.id} className="bg-white p-3 rounded-lg border border-emerald-200/50 shadow-2xs space-y-2">
+                      <h4 className="text-xs font-bold text-slate-900 uppercase truncate" title={draft.clientName}>
+                        {draft.clientName}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate leading-none">{draft.moldDescription || 'Molde Injeção'}</p>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-50">
+                        <span className="text-xs font-bold text-emerald-600 font-mono">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(draft.totals?.finalPrice || 0)}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setAppView('producao');
+                            showToast('Acompanhe a fabricação técnica deste molde.');
+                          }}
+                          className="px-2 py-1 bg-slate-800 hover:bg-slate-900 text-white font-bold text-[9px] uppercase rounded-md transition"
+                        >
+                          Ver OS
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Col 4: Perdido (Recusado) */}
+              <div className="bg-red-50/30 border border-red-100 rounded-xl p-3 min-w-[250px] space-y-3 flex flex-col">
+                <div className="flex items-center justify-between border-b border-red-200/50 pb-2">
+                  <span className="text-xs font-bold text-red-700 uppercase tracking-wider">4. Perdido / Recusado</span>
+                  <span className="px-2 py-0.5 bg-red-100 text-red-800 text-[10px] font-bold rounded-full">
+                    {drafts.filter(d => d.status === 'rejected').length}
+                  </span>
+                </div>
+                <div className="space-y-2.5 flex-1 overflow-y-auto max-h-[500px] pr-1">
+                  {drafts.filter(d => d.status === 'rejected').map(draft => (
+                    <div key={draft.id} className="bg-white p-3 rounded-lg border border-red-100/50 shadow-2xs opacity-70 space-y-2">
+                      <h4 className="text-xs font-bold text-slate-900 uppercase truncate" title={draft.clientName}>
+                        {draft.clientName}
+                      </h4>
+                      <p className="text-[10px] text-slate-400 truncate leading-none">{draft.moldDescription || 'Molde Injeção'}</p>
+                      <div className="flex justify-between items-center pt-1 border-t border-slate-50">
+                        <span className="text-xs font-bold text-red-600 font-mono">
+                          {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(draft.totals?.finalPrice || 0)}
+                        </span>
+                        <button
+                          onClick={async () => {
+                            const updated = { ...draft, status: 'pending' as const };
+                            setDrafts(prev => prev.map(d => d.id === draft.id ? updated : d));
+                            if (isSupabaseConfigured) await syncSaveBudget(updated);
+                            showToast('Proposta recuperada para negociação.');
+                          }}
+                          className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-[9px] uppercase rounded-md transition"
+                        >
+                          Reabrir
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        )}
+
+        {/* 5. PRODUCTION CHECKLIST SCREEN */}
+        {appView === 'producao' && (
+          <div className="space-y-6 animate-fadeIn pb-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-black text-slate-900 font-heading uppercase tracking-tight flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-blue-500" />
+                  Ordem de Serviço (Acompanhamento de Produção)
+                </h2>
+                <p className="text-xs text-slate-500">Controle o status de execução de todas as etapas de ferramentaria para os orçamentos aprovados.</p>
+              </div>
+              <button
+                onClick={() => setAppView('home')}
+                className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer self-start sm:self-auto"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                Painel de Orçamentos
+              </button>
+            </div>
+
+            {drafts.filter(d => d.status === 'approved').length === 0 ? (
+              <div className="text-center py-16 bg-white border border-slate-200 rounded-2xl p-8 space-y-3">
+                <Activity className="w-12 h-12 text-slate-300 mx-auto" />
+                <p className="text-slate-500 text-sm font-medium">Nenhuma Ordem de Serviço ativa.</p>
+                <p className="text-xs text-slate-400">Aprovar orçamentos comercialmente para gerar Ordens de Serviço automáticas para a engenharia/fábrica.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {drafts.filter(d => d.status === 'approved').map(draft => {
+                  // Ensure stages are populated
+                  const stages = draft.productionStages || [
+                    { id: 'projeto', name: 'Projeto 3D', status: 'pending' },
+                    { id: 'usinagem_placas', name: 'Usinagem de Placas', status: 'pending' },
+                    { id: 'ajuste', name: 'Ajuste & Bancada', status: 'pending' },
+                    { id: 'test_t1', name: 'Teste Try-out T1', status: 'pending' },
+                    { id: 'entrega', name: 'Entrega Final', status: 'pending' }
+                  ];
+
+                  const completedStagesCount = stages.filter(s => s.status === 'completed').length;
+                  const progressPct = Math.round((completedStagesCount / stages.length) * 100);
+
+                  const cycleStageStatus = async (stageId: string) => {
+                    const currentStatusOrder: ('pending' | 'in_progress' | 'completed')[] = ['pending', 'in_progress', 'completed'];
+                    const updatedStages = stages.map(stage => {
+                      if (stage.id === stageId) {
+                        const nextIdx = (currentStatusOrder.indexOf(stage.status) + 1) % currentStatusOrder.length;
+                        return { ...stage, status: currentStatusOrder[nextIdx], updated_at: new Date().toISOString() };
+                      }
+                      return stage;
+                    });
+
+                    const updatedDraft = {
+                      ...draft,
+                      productionStages: updatedStages
+                    };
+
+                    // Optimistic state update
+                    setDrafts(prev => prev.map(d => d.id === draft.id ? updatedDraft : d));
+
+                    if (isSupabaseConfigured) {
+                      try {
+                        await syncSaveBudget(updatedDraft);
+                        showToast('Status da etapa atualizado com sucesso!', 'success');
+                      } catch (err) {
+                        console.error('Erro ao salvar etapa no Supabase:', err);
+                        showToast('Erro ao sincronizar etapa com o banco', 'error');
+                      }
+                    } else {
+                      localStorage.setItem('mold_drafts', JSON.stringify(drafts.map(d => d.id === draft.id ? updatedDraft : d)));
+                      showToast('Status da etapa salvo localmente!', 'success');
+                    }
+                  };
+
+                  return (
+                    <div key={draft.id} className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs space-y-4">
+                      
+                      {/* Top bar info */}
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 pb-3 border-b border-slate-100">
+                        <div>
+                          <span className="text-[10px] font-mono font-black text-slate-500 uppercase">OS REF: {draft.reference}</span>
+                          <h3 className="text-sm font-extrabold text-slate-900 uppercase font-heading">{draft.clientName}</h3>
+                          <p className="text-xs text-slate-500 font-semibold">{draft.moldDescription || 'Molde Injeção'}</p>
+                        </div>
+                        <div className="text-right sm:text-right">
+                          <span className="text-[10px] font-bold text-slate-400 block uppercase font-heading">Progresso Total</span>
+                          <span className="text-sm font-black text-blue-600 font-sans">{progressPct}% Concluído</span>
+                        </div>
+                      </div>
+
+                      {/* Progress Line */}
+                      <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 transition-all duration-500"
+                          style={{ width: `${progressPct}%` }}
+                        />
+                      </div>
+
+                      {/* Interactive Stage Steps */}
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 pt-2">
+                        {stages.map(stage => {
+                          const badgeColors = {
+                            pending: 'bg-slate-50 border-slate-200 text-slate-500',
+                            in_progress: 'bg-blue-50 border-blue-200 text-blue-600 animate-pulse',
+                            completed: 'bg-emerald-50 border-emerald-200 text-emerald-700 font-bold'
+                          };
+
+                          const labelNames = {
+                            pending: 'Pendente',
+                            in_progress: 'Executando',
+                            completed: 'Concluído'
+                          };
+
+                          return (
+                            <button
+                              key={stage.id}
+                              onClick={() => cycleStageStatus(stage.id)}
+                              className={`p-3 border rounded-lg transition text-left cursor-pointer flex flex-col justify-between h-20 shadow-2xs hover:scale-[1.01] ${badgeColors[stage.status]}`}
+                            >
+                              <span className="text-[10px] font-bold uppercase tracking-wider block">{stage.name}</span>
+                              <span className="text-[10px] mt-2 block font-extrabold uppercase text-right w-full">
+                                {labelNames[stage.status]}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Módulo 2: Engenharia e BOM */}
+        {appView === 'modulo2' && (
+          <Modulo2Engenharia
+            projects={erpProjects}
+            approvedBudgets={drafts}
+            onSaveProject={handleSaveProject}
+            onDeleteProject={handleDeleteProject}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 3: Planejamento PCP */}
+        {appView === 'modulo3' && (
+          <Modulo3PCP
+            projects={erpProjects}
+            onSaveProject={handleSaveProject}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 4: Almoxarifado e Estoque */}
+        {appView === 'modulo4' && (
+          <Modulo4Estoque
+            rawStock={erpRawStock}
+            stdStock={erpStdStock}
+            tools={erpTools}
+            projects={erpProjects}
+            onSaveRawStock={setErpRawStock}
+            onSaveStdStock={setErpStdStock}
+            onSaveTools={setErpTools}
+            showToast={showToast}
+            triggerPurchaseRequest={handleTriggerPurchaseRequest}
+          />
+        )}
+
+        {/* Módulo 5: Chão de Fábrica */}
+        {appView === 'modulo5' && (
+          <Modulo5ChaoDeFabrica
+            projects={erpProjects}
+            onSaveProject={handleSaveProject}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 6: Controle de Qualidade */}
+        {appView === 'modulo6' && (
+          <Modulo6Qualidade
+            inspections={erpAudits}
+            nonConformances={erpRncs}
+            projects={erpProjects}
+            rawStock={erpRawStock}
+            onSaveInspections={setErpAudits}
+            onSaveNonConformances={setErpRncs}
+            onSaveProject={handleSaveProject}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 7: Custos e Controladoria */}
+        {appView === 'modulo7' && (
+          <Modulo7Custos
+            projects={erpProjects}
+            onSaveProject={handleSaveProject}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 8: Financeiro e Fluxo de Caixa */}
+        {appView === 'modulo8' && (
+          <Modulo8Financeiro
+            milestones={erpMilestones}
+            transactions={erpTransactions}
+            projects={erpProjects}
+            onSaveMilestones={setErpMilestones}
+            onSaveTransactions={setErpTransactions}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 9: Compras e Cotações */}
+        {appView === 'modulo9' && (
+          <Modulo9Compras
+            requests={erpRequests}
+            projects={erpProjects}
+            rawStock={erpRawStock}
+            stdStock={erpStdStock}
+            onSaveRequests={setErpRequests}
+            onSaveRawStock={setErpRawStock}
+            onSaveStdStock={setErpStdStock}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 10: Manutenção de Moldes */}
+        {appView === 'modulo10' && (
+          <Modulo10Manutencao
+            logs={erpMaintLogs}
+            projects={erpProjects}
+            onSaveLogs={setErpMaintLogs}
+            showToast={showToast}
+          />
+        )}
+
+        {/* Módulo 11: Business Intelligence */}
+        {appView === 'modulo11' && (
+          <Modulo11BI
+            projects={erpProjects}
+            transactions={erpTransactions}
+            requests={erpRequests}
+          />
+        )}
+
+        {appView === 'acessos' && userProfile?.role === 'admin' && (
+          <div className="space-y-6 animate-fadeIn pb-12">
+            
+            {/* HEADER */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-200">
+              <div>
+                <h2 className="text-lg font-black text-[#0F2A43] font-heading uppercase tracking-tight flex items-center gap-2">
+                  <Shield className="w-5 h-5 text-[#2563A8]" />
+                  Painel de Usuários & Matriz de Permissões
+                </h2>
+                <p className="text-xs text-slate-500 mt-1">
+                  Cadastre novos colaboradores, defina setores e configure as permissões individuais para cada etapa do funil industrial.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    setSelectedProfileForEdit(null);
+                    setFormName('');
+                    setFormEmail('');
+                    setFormRole('viewer');
+                    setFormStatus('pending');
+                    setFormSector('Comercial');
+                    setFormOrg('Unidade Alpha Matrix');
+                    // Reset to default
+                    setFormPermissions({
+                      'Comercial': { view: true, create: true, edit: false, delete: false, approve: false },
+                      'Engenharia': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'PCP': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Produção': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Almoxarifado': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Compras': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Qualidade': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Controladoria': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Financeiro': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'Manutenção': { view: true, create: false, edit: false, delete: false, approve: false },
+                      'BI': { view: true, create: false, edit: false, delete: false, approve: false },
+                    });
+                    setIsUserFormOpen(true);
+                  }}
+                  className="px-4 py-2 bg-[#2563A8] hover:bg-[#1A3F6F] text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Plus className="w-4 h-4" />
+                  Novo Usuário
+                </button>
+                <button
+                  onClick={() => setAppView('modulo11')}
+                  className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Dashboard 360°
+                </button>
+              </div>
+            </div>
+
+            {/* BANNER REGRA DE NEGÓCIO */}
+            <div className="bg-[#0F2A43] text-white p-4 rounded-xl border border-[#1A3F6F] text-xs leading-relaxed flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1">
+                <strong>🛡️ Segurança e Rastreabilidade Matrix System:</strong>
+                <p className="text-slate-300">Cada ação de criação, edição ou aprovação fica permanentemente registrada sob a assinatura do colaborador logado. Usuários inativos ou pendentes de aprovação têm acesso imediatamente bloqueado.</p>
+              </div>
+              <div className="shrink-0 bg-emerald-950 px-3 py-1.5 rounded-lg border border-emerald-500/20 text-emerald-400 font-bold text-[10px] uppercase text-center">
+                Total RLS Ativo
+              </div>
+            </div>
+
+            {/* MAIN LIST TABLE */}
+            {profileLoading ? (
+              <div className="text-center py-12 bg-white border border-slate-200 rounded-xl space-y-2">
+                <svg className="animate-spin h-8 w-8 text-[#2563A8] mx-auto" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                <p className="text-slate-500 text-xs font-semibold">Buscando perfis reais de usuários no banco de dados...</p>
+              </div>
+            ) : (
+              <div className="bg-white border border-slate-200 rounded-xl shadow-xs overflow-hidden">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="bg-slate-50 border-b border-slate-200 text-[10px] font-black text-slate-400 uppercase tracking-wider">
+                        <th className="p-4">Colaborador / Código</th>
+                        <th className="p-4">E-mail Corporativo</th>
+                        <th className="p-4">Setor Vinculado</th>
+                        <th className="p-4">Papel / Nível</th>
+                        <th className="p-4">Status de Ativação</th>
+                        <th className="p-4 text-center">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {profilesList.map(profile => {
+                        // Cast as any for local dynamic additions
+                        const prof = profile as any;
+                        const sector = prof.sector || 'Comercial';
+
+                        return (
+                          <tr key={profile.id} className="hover:bg-slate-50/50 transition">
+                            <td className="p-4">
+                              <div className="font-bold text-slate-900">{profile.full_name || 'Usuário Sem Nome'}</div>
+                              <div className="text-[10px] text-slate-400 font-mono mt-0.5">{profile.id}</div>
+                            </td>
+                            <td className="p-4 text-slate-600 font-mono">{profile.email}</td>
+                            <td className="p-4">
+                              <span className="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-[10px] font-bold uppercase">
+                                {sector}
+                              </span>
+                            </td>
+                            <td className="p-4">
+                              <select
+                                value={profile.role}
+                                onChange={(e) => handleUpdateProfile(profile.id, { role: e.target.value as any })}
+                                className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 cursor-pointer focus:ring-1 focus:ring-indigo-500"
+                              >
+                                <option value="admin">Administrador (Total)</option>
+                                <option value="manager">Gestor de Setor</option>
+                                <option value="operator">Operador Técnico</option>
+                                <option value="viewer">Convidado / Leitura</option>
+                              </select>
+                            </td>
+                            <td className="p-4">
+                              <select
+                                value={profile.status}
+                                onChange={(e) => handleUpdateProfile(profile.id, { status: e.target.value as any })}
+                                className={`px-2 py-1 border rounded-lg text-xs font-black cursor-pointer focus:ring-1 focus:ring-indigo-500 ${
+                                  profile.status === 'active' 
+                                    ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+                                    : profile.status === 'pending'
+                                      ? 'bg-amber-50 border-amber-200 text-amber-700 animate-pulse'
+                                      : 'bg-red-50 border-red-200 text-red-700'
+                                }`}
+                              >
+                                <option value="active">✓ Ativo (Autorizado)</option>
+                                <option value="pending">⏳ Aguardando Ativação</option>
+                                <option value="inactive">🚫 Inativo (Bloqueado)</option>
+                              </select>
+                            </td>
+                            <td className="p-4 text-center space-x-1">
+                              <button
+                                onClick={() => {
+                                  setSelectedProfileForEdit(profile);
+                                  setFormName(profile.full_name);
+                                  setFormEmail(profile.email);
+                                  setFormRole(profile.role);
+                                  setFormStatus(profile.status);
+                                  setFormSector(prof.sector || 'Comercial');
+                                  setFormOrg(profile.organization || 'Unidade Alpha Matrix');
+                                  if (prof.permissions) {
+                                    setFormPermissions(prof.permissions);
+                                  } else {
+                                    // Default permissions based on role
+                                    const isAdmin = profile.role === 'admin' || profile.role === 'manager';
+                                    const defaultPerms: any = {};
+                                    ['Comercial', 'Engenharia', 'PCP', 'Produção', 'Almoxarifado', 'Compras', 'Qualidade', 'Controladoria', 'Financeiro', 'Manutenção', 'BI'].forEach(mod => {
+                                      defaultPerms[mod] = {
+                                        view: true,
+                                        create: isAdmin,
+                                        edit: isAdmin,
+                                        delete: profile.role === 'admin',
+                                        approve: profile.role === 'admin',
+                                      };
+                                    });
+                                    setFormPermissions(defaultPerms);
+                                  }
+                                  setIsUserFormOpen(true);
+                                }}
+                                className="p-1.5 hover:bg-slate-100 text-slate-500 hover:text-indigo-600 rounded-lg transition"
+                                title="Editar Usuário & Matriz"
+                              >
+                                <Settings className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (confirm(`Tem certeza que deseja remover o colaborador ${profile.full_name}?`)) {
+                                    setProfilesList(prev => prev.filter(p => p.id !== profile.id));
+                                    showToast('Colaborador removido com sucesso!', 'success');
+                                  }
+                                }}
+                                className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition"
+                                title="Remover Usuário"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* FORM MODAL WITH PERMISSION MATRIX */}
+            {isUserFormOpen && (
+              <div className="fixed inset-0 bg-black/70 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200">
+                  {/* Modal Header */}
+                  <div className="p-5 bg-[#0F2A43] text-white flex items-center justify-between border-b">
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-5 h-5 text-[#C8A435]" />
+                      <div>
+                        <h3 className="font-extrabold text-sm uppercase tracking-wider text-slate-100">
+                          {selectedProfileForEdit ? 'Configurar Cadastro & Permissões' : 'Cadastrar Novo Colaborador'}
+                        </h3>
+                        <p className="text-[10px] text-slate-300 mt-0.5">Defina os parâmetros de acesso do usuário no Matrix System</p>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setIsUserFormOpen(false)}
+                      className="text-slate-300 hover:text-white transition p-1.5 rounded-lg hover:bg-slate-800"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  {/* Modal Body */}
+                  <div className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
+                    
+                    {/* Basic info row */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Nome Completo</label>
+                        <input
+                          type="text"
+                          value={formName}
+                          onChange={(e) => setFormName(e.target.value)}
+                          placeholder="Ex: João da Silva"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">E-mail Corporativo</label>
+                        <input
+                          type="email"
+                          value={formEmail}
+                          onChange={(e) => setFormEmail(e.target.value)}
+                          placeholder="Ex: joao@empresa.com"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Setor Primário</label>
+                        <select
+                          value={formSector}
+                          onChange={(e) => setFormSector(e.target.value)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none bg-white cursor-pointer font-bold"
+                        >
+                          <option value="Comercial">1. Comercial & CRM</option>
+                          <option value="Engenharia">2. Engenharia & Projetos</option>
+                          <option value="PCP">3. Planejamento PCP</option>
+                          <option value="Produção">4. Produção / Usinagem</option>
+                          <option value="Almoxarifado">5. Almoxarifado / Estoque</option>
+                          <option value="Compras">6. Compras & Contratos</option>
+                          <option value="Qualidade">7. Qualidade & NC</option>
+                          <option value="Financeiro">8. Controladoria / Financeiro</option>
+                          <option value="Manutenção">9. Manutenção & Engenhos</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Papel Global</label>
+                        <select
+                          value={formRole}
+                          onChange={(e) => {
+                            const newRole = e.target.value as any;
+                            setFormRole(newRole);
+                            // Auto-adjust permissions Matrix to guide user
+                            const isAd = newRole === 'admin' || newRole === 'manager';
+                            const updated: any = { ...formPermissions };
+                            Object.keys(updated).forEach(mod => {
+                              updated[mod] = {
+                                view: true,
+                                create: isAd,
+                                edit: isAd,
+                                delete: newRole === 'admin',
+                                approve: newRole === 'admin',
+                              };
+                            });
+                            setFormPermissions(updated);
+                          }}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none bg-white cursor-pointer font-bold"
+                        >
+                          <option value="admin">Administrador (Total)</option>
+                          <option value="manager">Gestor de Setor</option>
+                          <option value="operator">Operador Técnico</option>
+                          <option value="viewer">Convidado / Leitura</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Status Inicial</label>
+                        <select
+                          value={formStatus}
+                          onChange={(e) => setFormStatus(e.target.value as any)}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none bg-white cursor-pointer font-bold"
+                        >
+                          <option value="active">Ativo (Permitir Entrada)</option>
+                          <option value="pending">Aguardando Ativação</option>
+                          <option value="inactive">Inativo (Bloquear Entrada)</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Organização Autorizada</label>
+                        <input
+                          type="text"
+                          value={formOrg}
+                          onChange={(e) => setFormOrg(e.target.value)}
+                          placeholder="Ex: Matriz Alpha"
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    {/* GRANULAR PERMISSION MATRIX TABLE */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="font-extrabold text-xs text-[#0F2A43] uppercase tracking-wider">
+                          Matriz de Permissões por Módulo do Funil
+                        </h4>
+                        <span className="text-[10px] text-slate-400">Marque as caixas para outorgar privilégios específicos</span>
+                      </div>
+
+                      <div className="bg-slate-50 border rounded-xl overflow-hidden">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead>
+                            <tr className="bg-slate-100 border-b text-[10px] font-extrabold text-slate-500 uppercase tracking-widest text-center">
+                              <th className="p-2 text-left w-1/4">Etapa do Funil</th>
+                              <th className="p-2">Visualizar</th>
+                              <th className="p-2">Criar</th>
+                              <th className="p-2">Editar</th>
+                              <th className="p-2">Excluir</th>
+                              <th className="p-2">Aprovar</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200 font-bold">
+                            {['Comercial', 'Engenharia', 'PCP', 'Produção', 'Almoxarifado', 'Compras', 'Qualidade', 'Controladoria', 'Financeiro', 'Manutenção', 'BI'].map((modName) => {
+                              const rights = formPermissions[modName] || { view: true, create: false, edit: false, delete: false, approve: false };
+                              
+                              const toggleRight = (right: 'view' | 'create' | 'edit' | 'delete' | 'approve') => {
+                                setFormPermissions(prev => ({
+                                  ...prev,
+                                  [modName]: {
+                                    ...prev[modName],
+                                    [right]: !rights[right]
+                                  }
+                                }));
+                              };
+
+                              return (
+                                <tr key={modName} className="hover:bg-slate-100/50 transition">
+                                  <td className="p-2.5 text-slate-900 text-left font-extrabold">{modName}</td>
+                                  <td className="p-2.5 text-center">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={rights.view} 
+                                      onChange={() => toggleRight('view')} 
+                                      className="h-3.5 w-3.5 rounded text-[#2563A8] border-slate-300 focus:ring-[#2563A8] cursor-pointer"
+                                    />
+                                  </td>
+                                  <td className="p-2.5 text-center">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={rights.create} 
+                                      onChange={() => toggleRight('create')} 
+                                      className="h-3.5 w-3.5 rounded text-[#2563A8] border-slate-300 focus:ring-[#2563A8] cursor-pointer"
+                                    />
+                                  </td>
+                                  <td className="p-2.5 text-center">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={rights.edit} 
+                                      onChange={() => toggleRight('edit')} 
+                                      className="h-3.5 w-3.5 rounded text-[#2563A8] border-slate-300 focus:ring-[#2563A8] cursor-pointer"
+                                    />
+                                  </td>
+                                  <td className="p-2.5 text-center">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={rights.delete} 
+                                      onChange={() => toggleRight('delete')} 
+                                      className="h-3.5 w-3.5 rounded text-[#2563A8] border-slate-300 focus:ring-[#2563A8] cursor-pointer"
+                                    />
+                                  </td>
+                                  <td className="p-2.5 text-center">
+                                    <input 
+                                      type="checkbox" 
+                                      checked={rights.approve} 
+                                      onChange={() => toggleRight('approve')} 
+                                      className="h-3.5 w-3.5 rounded text-[#2563A8] border-slate-300 focus:ring-[#2563A8] cursor-pointer"
+                                    />
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                  </div>
+
+                  {/* Modal Footer */}
+                  <div className="p-4 bg-slate-50 border-t flex items-center justify-end gap-2 shrink-0">
+                    <button
+                      onClick={() => setIsUserFormOpen(false)}
+                      className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!formName.trim() || !formEmail.trim()) {
+                          showToast('Por favor, preencha o nome e o e-mail corporativo!', 'error');
+                          return;
+                        }
+
+                        if (selectedProfileForEdit) {
+                          // Editing collaborator CRUD
+                          const updatedProfile = {
+                            ...selectedProfileForEdit,
+                            full_name: formName,
+                            email: formEmail,
+                            role: formRole,
+                            status: formStatus,
+                            organization: formOrg,
+                            sector: formSector,
+                            permissions: formPermissions,
+                            updated_at: new Date().toISOString()
+                          };
+                          handleUpdateProfile(selectedProfileForEdit.id, updatedProfile);
+                        } else {
+                          // Creating collaborator CRUD
+                          const newId = `colab_${Math.floor(Math.random() * 100000)}`;
+                          const newProfile: any = {
+                            id: newId,
+                            email: formEmail,
+                            full_name: formName,
+                            role: formRole,
+                            status: formStatus,
+                            organization: formOrg,
+                            sector: formSector,
+                            permissions: formPermissions,
+                            updated_at: new Date().toISOString()
+                          };
+                          setProfilesList(prev => [newProfile, ...prev]);
+                          showToast(`Colaborador "${formName}" registrado com sucesso!`, 'success');
+                        }
+                        setIsUserFormOpen(false);
+                      }}
+                      className="px-5 py-2 bg-[#2563A8] hover:bg-[#1A3F6F] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md uppercase tracking-wider"
+                    >
+                      <Check className="w-4 h-4" />
+                      Salvar Cadastro
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* 7. GERENCIAR ORGANIZAÇÃO ADMIN SCREEN */}
+        {appView === 'organizacao' && userProfile?.role === 'admin' && (
+          <OrganizationAdminScreen 
+            onBack={() => setAppView('home')} 
+            showToast={showToast} 
+          />
+        )}
+
+      </main>
+
+      {/* PERSISTENT MOBILE BOTTOM NAVIGATION BAR */}
+      <nav className="fixed bottom-0 left-0 right-0 z-40 bg-[#0F172A] border-t-2 border-slate-800 flex justify-around py-2 px-3 md:hidden shadow-lg text-slate-400">
+        <button
+          onClick={() => setAppView('home')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition ${appView === 'home' ? 'text-white font-bold bg-slate-800/60' : 'hover:text-white'}`}
+        >
+          <FolderOpen className="w-4 h-4" />
+          <span className="text-[10px] uppercase font-bold tracking-wider">Histórico</span>
+        </button>
+        <button
+          onClick={() => {
+            handleGeralNovo();
+            setAppView('editor');
+          }}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition ${appView === 'editor' ? 'text-white font-bold bg-slate-800/60' : 'hover:text-white'}`}
+        >
+          <Plus className="w-4 h-4 text-[#EA580C]" />
+          <span className="text-[10px] uppercase font-bold tracking-wider">Novo</span>
+        </button>
+        <button
+          onClick={() => setAppView('clientes')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition ${appView === 'clientes' ? 'text-white font-bold bg-slate-800/60' : 'hover:text-white'}`}
+        >
+          <Users className="w-4 h-4" />
+          <span className="text-[10px] uppercase font-bold tracking-wider">Clientes</span>
+        </button>
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition hover:text-white"
+        >
+          <Settings className="w-4 h-4" />
+          <span className="text-[10px] uppercase font-bold tracking-wider">Ajustes</span>
+        </button>
+      </nav>
+
+      {/* Settings Modal Dialog */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+        config={config}
+        onSaveConfig={handleSaveConfig}
+        serviceRates={internalServices}
+        onSaveServiceRates={handleSaveServiceRates}
+        onResetToDefaults={handleResetToDefaults}
+        rawMaterials={rawMaterials}
+        onSaveRawMaterials={handleSaveRawMaterials}
+        machiningTypes={machiningTypes}
+        onSaveMachiningTypes={(types) => {
+          setMachiningTypes(types);
+          localStorage.setItem('orcamolde_machining_types', JSON.stringify(types));
+          showToast('Parâmetros de usinagem salvos com sucesso!');
+        }}
+      />
+
+      {/* Supabase Schema Migration Guide Modal */}
+      {showSchemaGuide && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl text-white overflow-hidden">
+            {/* Header */}
+            <div className="p-5 border-b border-slate-800 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">🛠️</span>
+                <div>
+                  <h3 className="font-bold text-sm uppercase tracking-wider text-[#EA580C]">Configuração de Banco de Dados</h3>
+                  <p className="text-[10px] text-slate-400">Como inicializar o seu banco de dados Supabase</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSchemaGuide(false)}
+                className="text-slate-400 hover:text-white transition p-1.5 rounded-lg hover:bg-slate-800"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 overflow-y-auto space-y-4 flex-1 text-xs text-slate-300">
+              <div className="bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 space-y-2">
+                <h4 className="font-bold text-white uppercase tracking-wider text-[10px] text-orange-400">Passos para Configuração:</h4>
+                <ol className="list-decimal list-inside space-y-1.5 text-slate-300 pl-1">
+                  <li>Acesse o seu painel do <a href="https://supabase.com" target="_blank" rel="noopener noreferrer" className="text-orange-400 hover:underline font-bold">Supabase Console</a>.</li>
+                  <li>Selecione o seu projeto correspondente.</li>
+                  <li>No menu lateral esquerdo, clique em <strong>SQL Editor</strong> (ícone de terminal/documento).</li>
+                  <li>Clique em <strong>"New query"</strong> (ou "New Blank Query").</li>
+                  <li>Cole o código SQL abaixo no editor e clique no botão <strong>"Run"</strong> no canto inferior direito.</li>
+                </ol>
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-[10px] text-slate-400 uppercase tracking-widest">Script SQL de Inicialização</span>
+                  <button
+                    onClick={handleCopySQL}
+                    className="px-3 py-1 bg-[#EA580C] hover:bg-[#C2410C] text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition flex items-center gap-1 cursor-pointer"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="w-3.5 h-3.5" />
+                        Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        Copiar Código
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="relative">
+                  <pre className="bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-[10px] overflow-auto max-h-60 text-slate-300 select-all leading-normal whitespace-pre">
+                    {MIGRATION_SQL}
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-slate-950/40 border-t border-slate-800 flex justify-end">
+              <button
+                onClick={() => setShowSchemaGuide(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      </div>
+    </div>
+  );
+}
+
+const MIGRATION_SQL = `-- Migration: Initial Schema for Axemet CRM Tool
+-- Tables: profiles, clients, budgets, materials, services, machining_types
+
+-- Enable uuid-ossp extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- 1. PROFILES Table (links with Supabase Auth users)
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users ON DELETE CASCADE,
+  email TEXT,
+  full_name TEXT,
+  role TEXT DEFAULT 'viewer',
+  status TEXT DEFAULT 'pending',
+  organization TEXT DEFAULT 'Axemet Solution LTDA',
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
+
+-- Ensure the columns exist if the table was pre-existing (Supabase templates workaround)
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS full_name TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'viewer';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pending';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS organization TEXT DEFAULT 'Axemet Solution LTDA';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
+-- Enable RLS on Profiles
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Enable update for users own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Enable full access for admins" ON public.profiles;
+
+CREATE POLICY "Enable read access for all profiles" ON public.profiles FOR SELECT USING (true);
+CREATE POLICY "Enable update for users own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Enable full access for admins" ON public.profiles FOR ALL USING (
+  EXISTS (
+    SELECT 1 FROM public.profiles
+    WHERE public.profiles.id = auth.uid() AND public.profiles.role = 'admin'
+  )
+);
+
+-- Trigger to automatically create a profile for new auth users (Case-insensitive check)
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, email, full_name, role, status, organization)
+  VALUES (
+    NEW.id,
+    NEW.email,
+    COALESCE(NEW.raw_user_meta_data->>'full_name', NEW.email),
+    CASE WHEN LOWER(NEW.email) = 'filipesantos.ind85@gmail.com' THEN 'admin' ELSE 'viewer' END,
+    CASE WHEN LOWER(NEW.email) = 'filipesantos.ind85@gmail.com' THEN 'active' ELSE 'pending' END,
+    'Axemet Solution LTDA'
+  );
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Drop trigger if exists and recreate
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- 2. CLIENTS Table
+CREATE TABLE IF NOT EXISTS public.clients (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  name TEXT NOT NULL,
+  corporate_name TEXT,
+  cnpj TEXT,
+  state_inscription TEXT,
+  phone TEXT,
+  email TEXT,
+  responsible TEXT,
+  cep TEXT,
+  address TEXT,
+  number TEXT,
+  neighborhood TEXT,
+  city TEXT,
+  state TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on Clients
+ALTER TABLE public.clients ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all clients" ON public.clients;
+DROP POLICY IF EXISTS "Enable insert for all clients" ON public.clients;
+DROP POLICY IF EXISTS "Enable update for all clients" ON public.clients;
+DROP POLICY IF EXISTS "Enable delete for all clients" ON public.clients;
+
+CREATE POLICY "Enable read access for all clients" ON public.clients FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all clients" ON public.clients FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for all clients" ON public.clients FOR UPDATE USING (true);
+CREATE POLICY "Enable delete for all clients" ON public.clients FOR DELETE USING (true);
+
+-- 3. MATERIALS Table (Database of Raw Materials)
+CREATE TABLE IF NOT EXISTS public.materials (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  density NUMERIC NOT NULL,
+  price_per_kg NUMERIC NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on Materials
+ALTER TABLE public.materials ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all materials" ON public.materials;
+DROP POLICY IF EXISTS "Enable write access for all materials" ON public.materials;
+
+CREATE POLICY "Enable read access for all materials" ON public.materials FOR SELECT USING (true);
+CREATE POLICY "Enable write access for all materials" ON public.materials FOR ALL USING (true);
+
+-- 4. SERVICES Table (Database of Service Rates)
+CREATE TABLE IF NOT EXISTS public.services (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  unit TEXT NOT NULL,
+  val_unit NUMERIC NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on Services
+ALTER TABLE public.services ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all services" ON public.services;
+DROP POLICY IF EXISTS "Enable write access for all services" ON public.services;
+
+CREATE POLICY "Enable read access for all services" ON public.services FOR SELECT USING (true);
+CREATE POLICY "Enable write access for all services" ON public.services FOR ALL USING (true);
+
+-- 5. MACHINING TYPES Table (Database of Machining Rates)
+CREATE TABLE IF NOT EXISTS public.machining_types (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  hourly_rate NUMERIC NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on Machining Types
+ALTER TABLE public.machining_types ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all machining_types" ON public.machining_types;
+DROP POLICY IF EXISTS "Enable write access for all machining_types" ON public.machining_types;
+
+CREATE POLICY "Enable read access for all machining_types" ON public.machining_types FOR SELECT USING (true);
+CREATE POLICY "Enable write access for all machining_types" ON public.machining_types FOR ALL USING (true);
+
+-- 6. BUDGETS Table
+CREATE TABLE IF NOT EXISTS public.budgets (
+  id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  reference TEXT,
+  client_name TEXT NOT NULL,
+  client_id TEXT REFERENCES public.clients(id) ON DELETE SET NULL,
+  contact_name TEXT,
+  mold_type TEXT,
+  molding_material TEXT,
+  product_quantity INTEGER DEFAULT 1000,
+  delivery_time TEXT,
+  observations TEXT,
+  status TEXT DEFAULT 'draft',
+  mold_description TEXT,
+  date DATE DEFAULT CURRENT_DATE,
+  mold_width NUMERIC DEFAULT 0,
+  mold_length NUMERIC DEFAULT 0,
+  discount_percent NUMERIC DEFAULT 0,
+  discount_value NUMERIC DEFAULT 0,
+  totals JSONB NOT NULL,
+  config JSONB NOT NULL,
+  materials JSONB NOT NULL DEFAULT '[]'::jsonb,
+  third_party_items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  internal_services JSONB NOT NULL DEFAULT '[]'::jsonb,
+  machining_types JSONB NOT NULL DEFAULT '[]'::jsonb,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Enable RLS on Budgets
+ALTER TABLE public.budgets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enable read access for all budgets" ON public.budgets;
+DROP POLICY IF EXISTS "Enable insert for all budgets" ON public.budgets;
+DROP POLICY IF EXISTS "Enable update for all budgets" ON public.budgets;
+DROP POLICY IF EXISTS "Enable delete for all budgets" ON public.budgets;
+
+CREATE POLICY "Enable read access for all budgets" ON public.budgets FOR SELECT USING (true);
+CREATE POLICY "Enable insert for all budgets" ON public.budgets FOR INSERT WITH CHECK (true);
+CREATE POLICY "Enable update for all budgets" ON public.budgets FOR UPDATE USING (true);
+CREATE POLICY "Enable delete for all budgets" ON public.budgets FOR DELETE USING (true);
+
+
+-- ==========================================
+-- SEED DATA (Default configurations)
+-- ==========================================
+
+-- Seed Materials (Raw Materials)
+INSERT INTO public.materials (id, name, density, price_per_kg) VALUES
+  ('mat_1045', 'Aço 1045', 7.85, 11.50),
+  ('mat_p20', 'Aço P20', 7.85, 25.00),
+  ('mat_cobre', 'Cobre', 2.25, 65.00),
+  ('mat_aluminio', 'Alumínio', 2.70, 45.00),
+  ('mat_h13', 'Aço H13', 7.85, 55.00)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  density = EXCLUDED.density,
+  price_per_kg = EXCLUDED.price_per_kg;
+
+-- Seed Services (Service Rates)
+INSERT INTO public.services (id, name, unit, val_unit) VALUES
+  ('srv_0', 'Projeto', 'dia', 550.00),
+  ('srv_1', 'Usinagem Alumínio', 'h', 100.00),
+  ('srv_2', 'Usinagem Aço', 'h', 160.00),
+  ('srv_3', 'Usinagem Aço Temperado', 'h', 200.00),
+  ('srv_4', 'Erosão', 'h', 75.00),
+  ('srv_5', 'Matrizaria', 'dia', 550.00)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  unit = EXCLUDED.unit,
+  val_unit = EXCLUDED.val_unit;
+
+-- Seed Machining Types (Machining Rates)
+INSERT INTO public.machining_types (id, name, hourly_rate) VALUES
+  ('mt_fresa', 'Usinagem Aço', 160.0),
+  ('mt_fresa_temp', 'Usinagem Aço Temperado', 200.0),
+  ('mt_fresa_alum', 'Usinagem Alumínio', 100.0),
+  ('mt_erosao', 'Erosão', 75.0),
+  ('mt_retifica', 'Retífica', 120.0)
+ON CONFLICT (id) DO UPDATE SET
+  name = EXCLUDED.name,
+  hourly_rate = EXCLUDED.hourly_rate;
+
+-- Seed some default clients for immediate utility if none exist
+INSERT INTO public.clients (id, name, cnpj, phone, email, city) VALUES
+  ('client_1', 'Metalúrgica Aliança S/A', '98.765.432/0001-00', '(47) 3456-7890', 'suprimentos@alianca.com', 'Caxias do Sul - RS'),
+  ('client_2', 'Metalúrgica Teste Ltda.', '12.345.678/0001-99', '(11) 98765-4321', 'compras@metaltes.com', 'Joinville - SC'),
+  ('client_3', 'Plásticos do Brasil S.A.', '45.678.901/0001-22', '(19) 3211-5544', 'contato@plasticosbr.com', 'Sorocaba - SP')
+ON CONFLICT (id) DO NOTHING;
+`;
