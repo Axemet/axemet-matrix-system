@@ -113,7 +113,7 @@ export default function Modulo11BI({
         </div>
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-1">
-            <span className="text-[10px] font-extrabold tracking-widest text-[#C8A435] uppercase">MATRIX SYSTEM • TECNOLOGIA INDUSTRIAL</span>
+            <span className="text-[10px] font-extrabold tracking-widest text-[#C8A435] uppercase">AXEMET SYSTEM • TECNOLOGIA INDUSTRIAL</span>
             <h2 className="text-xl md:text-2xl font-black font-heading tracking-tight uppercase">Dashboard 360° de Operações</h2>
             <p className="text-xs text-slate-300 max-w-2xl font-medium leading-relaxed">
               Monitoramento integrado em tempo real: acompanhe o funil industrial desde os orçamentos, projetos em engenharia, programação de PCP, apontamentos no chão de fábrica e faturamento financeiro.

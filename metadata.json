@@ -1,5 +1,5 @@
 {
-  "name": "Axemet CRM",
+  "name": "Axemet System",
   "description": "Sistema integrado de CRM, Orçamentos Industriais e Gestão de Produção para Moldes e Matrizes por Axemet Solution LTDA.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]

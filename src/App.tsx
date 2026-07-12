@@ -1755,7 +1755,7 @@ export default function App() {
             MX
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">MATRIX SYSTEM</span>
+            <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase mt-1 leading-none">
               Gestão Industrial
             </span>
@@ -2016,7 +2016,7 @@ export default function App() {
               MX
             </div>
             <div>
-              <span className="text-[8px] font-black tracking-widest text-[#C8A435] uppercase block leading-none">MATRIX SYSTEM</span>
+              <span className="text-[8px] font-black tracking-widest text-[#C8A435] uppercase block leading-none">AXEMET SYSTEM</span>
               <span className="text-[10px] font-black text-slate-100 uppercase block leading-none">Gestão Industrial</span>
             </div>
           </div>
@@ -2089,7 +2089,7 @@ export default function App() {
         {/* DESKTOP METADATA TOP BAR */}
         <header className="hidden md:flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 shadow-xs">
           <div>
-            <span className="text-[9px] font-black text-[#1A3F6F] uppercase tracking-widest block leading-none">MATRIX SYSTEM • GESTÃO INDUSTRIAL</span>
+            <span className="text-[9px] font-black text-[#1A3F6F] uppercase tracking-widest block leading-none">AXEMET SYSTEM • GESTÃO INDUSTRIAL</span>
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-1 flex items-center gap-1.5 font-heading">
               {appView === 'modulo11' && '📊 Dashboard 360°'}
               {appView === 'crm' && '💼 Funil de Vendas CRM'}

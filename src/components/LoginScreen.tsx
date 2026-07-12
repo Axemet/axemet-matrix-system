@@ -287,7 +287,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             MX
           </div>
           <div className="flex flex-col">
-            <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">MATRIX SOLUTION</span>
+            <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-xs font-bold text-white uppercase mt-1 tracking-wider leading-none">
               Matrizaria Core
             </span>
@@ -297,7 +297,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         {/* Center Title / Value Proposition */}
         <div className="relative z-10 my-12 md:my-auto space-y-6">
           <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white font-display leading-tight">
-            MATRIX SYSTEM
+            AXEMET SYSTEM
           </h1>
           <p className="text-sm text-slate-300 font-normal leading-relaxed max-w-md">
             Gestão Industrial de Precisão. Controle de forma integral e integrada, do contato comercial ao pós-entrega do seu molde.
@@ -761,7 +761,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
               Modo Offline Ativo: <strong className="text-slate-600">admin / admin</strong> para simular login de Gestor.
             </p>
             <p className="text-[9px] text-slate-400">
-              © {new Date().getFullYear()} MATRIX SYSTEM. Gestão Industrial de Precisão.
+              © {new Date().getFullYear()} AXEMET SYSTEM. Gestão Industrial de Precisão.
             </p>
           </div>
 
