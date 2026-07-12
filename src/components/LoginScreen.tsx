@@ -755,11 +755,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
             </>
           )}
 
-          {/* Quick tips & Default credits */}
+          {/* Product credit */}
           <div className="pt-6 border-t border-slate-100 text-center space-y-1">
-            <p className="text-[10px] text-slate-400 font-bold">
-              Modo Offline Ativo: <strong className="text-slate-600">admin / admin</strong> para simular login de Gestor.
-            </p>
             <p className="text-[9px] text-slate-400">
               © {new Date().getFullYear()} AXEMET SYSTEM. Gestão Industrial de Precisão.
             </p>
