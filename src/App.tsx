@@ -1737,7 +1737,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex flex-col md:flex-row">
+    <div className="axemet-shell min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex flex-col md:flex-row">
       
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -1748,11 +1748,11 @@ export default function App() {
       )}
 
       {/* DESKTOP INDUSTRIAL FUNNEL SIDEBAR */}
-      <aside className="hidden md:flex flex-col w-72 bg-[#0F2A43] text-slate-100 border-r border-[#1A3F6F] shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
+      <aside className="axemet-sidebar hidden md:flex flex-col w-72 bg-[#0F2A43] text-slate-100 border-r border-[#1A3F6F] shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
         {/* Brand/Logo */}
-        <div className="p-5 border-b border-[#1A3F6F] flex items-center gap-3 bg-[#0B1E30]">
+        <div className="axemet-brand p-5 border-b border-[#1A3F6F] flex items-center gap-3 bg-[#0B1E30]">
           <div className="w-10 h-10 bg-[#2563A8] rounded-xl flex items-center justify-center font-black text-sm text-white border-2 border-[#C8A435] shadow-lg">
-            MX
+            AX
           </div>
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
@@ -1763,7 +1763,7 @@ export default function App() {
         </div>
 
         {/* Current Org Indicator */}
-        <div className="px-5 py-3 bg-[#0A2237] border-b border-[#1A3F6F] flex items-center justify-between text-[11px] text-slate-300">
+        <div className="axemet-org px-5 py-3 bg-[#0A2237] border-b border-[#1A3F6F] flex items-center justify-between text-[11px] text-slate-300">
           <div className="flex items-center gap-1.5">
             <Building className="w-3.5 h-3.5 text-[#C8A435]" />
             <span>Unidade: <strong className="text-white">MATRIZ ALPHA</strong></span>
@@ -2084,10 +2084,10 @@ export default function App() {
       </header>
 
       {/* RIGHT VIEWPORT CONTENT CONTAINER */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="axemet-workspace flex-1 flex flex-col min-w-0 min-h-screen">
         
         {/* DESKTOP METADATA TOP BAR */}
-        <header className="hidden md:flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 shadow-xs">
+        <header className="axemet-topbar hidden md:flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 shadow-xs">
           <div>
             <span className="text-[9px] font-black text-[#1A3F6F] uppercase tracking-widest block leading-none">AXEMET SYSTEM • GESTÃO INDUSTRIAL</span>
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-1 flex items-center gap-1.5 font-heading">
@@ -2127,14 +2127,14 @@ export default function App() {
         </header>
 
         {/* CONTENT STAGE */}
-        <main className="w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1">
+        <main className="axemet-main w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1">
 
 
         {/* 1. HOME SCREEN: List of Budgets */}
         {appView === 'home' && (
           <div className="space-y-6 animate-fadeIn">
             {/* Header / Hero Stats */}
-            <div className="bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-6 text-white shadow-xl border border-slate-800 relative overflow-hidden">
+            <div className="axemet-hero bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 rounded-2xl p-6 text-white shadow-xl border border-slate-800 relative overflow-hidden">
               <div className="absolute top-0 right-0 p-8 opacity-5">
                 <Cpu className="w-40 h-40" />
               </div>
@@ -2148,7 +2148,7 @@ export default function App() {
                 </div>
 
                 {/* Dashboard Stats */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
+                <div className="axemet-hero-stats grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-slate-800">
                   <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-xl flex flex-col justify-between min-h-[84px]">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Total de Projetos</p>
                     <p className="text-xl sm:text-2xl font-black font-heading text-white">{drafts.length}</p>
@@ -2196,7 +2196,7 @@ export default function App() {
             </div>
 
             {/* Search & Filters block */}
-            <div className="bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
+            <div className="axemet-filter bg-white p-4 rounded-xl border border-slate-200/80 shadow-xs space-y-3">
               <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
                 {/* Search */}
                 <div className="md:col-span-6 relative">
