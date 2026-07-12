@@ -84,6 +84,7 @@ import Modulo8Financeiro from './components/Modulo8Financeiro';
 import Modulo9Compras from './components/Modulo9Compras';
 import Modulo10Manutencao from './components/Modulo10Manutencao';
 import Modulo11BI from './components/Modulo11BI';
+import ModuloRH from './components/ModuloRH';
 
 // Icons
 import { 
@@ -146,7 +147,7 @@ function generateNextReference(existingDrafts: BudgetDraft[]): string {
 
 export default function App() {
   // Navigation & View Mode for the Axemet CRM & budgeting flow
-  const [appView, setAppView] = React.useState<'home' | 'editor' | 'details' | 'clientes' | 'crm' | 'producao' | 'acessos' | 'organizacao' | 'modulo2' | 'modulo3' | 'modulo4' | 'modulo5' | 'modulo6' | 'modulo7' | 'modulo8' | 'modulo9' | 'modulo10' | 'modulo11'>('modulo11');
+  const [appView, setAppView] = React.useState<'home' | 'editor' | 'details' | 'clientes' | 'crm' | 'producao' | 'acessos' | 'organizacao' | 'rh' | 'modulo2' | 'modulo3' | 'modulo4' | 'modulo5' | 'modulo6' | 'modulo7' | 'modulo8' | 'modulo9' | 'modulo10' | 'modulo11'>('modulo11');
 
   // --- INTEGRATED ERP 11-MODULE STATES ---
   const [erpProjects, setErpProjects] = React.useState<MatrixProject[]>(() => {
@@ -487,6 +488,32 @@ export default function App() {
         return [updatedProj, ...prev];
       }
     });
+  };
+
+  const workflowOperations = React.useMemo(() => erpProjects.flatMap(project =>
+    project.bom.flatMap(item => item.operations.map(operation => ({
+      projectId: project.id,
+      project: project.reference,
+      operationId: operation.id,
+      operation: operation.name,
+      workCenter: operation.workCenter,
+      operator: operation.operator,
+      status: operation.status,
+    })))
+  ), [erpProjects]);
+
+  const handleAssignOperation = (projectId: string, operationId: string, employeeName: string, machineName: string) => {
+    setErpProjects(projects => projects.map(project => project.id !== projectId ? project : {
+      ...project,
+      bom: project.bom.map(item => ({
+        ...item,
+        operations: item.operations.map(operation => operation.id === operationId ? {
+          ...operation,
+          operator: employeeName,
+          workCenter: machineName,
+        } : operation),
+      })),
+    }));
   };
 
   const handleDeleteProject = (id: string) => {
@@ -1958,6 +1985,22 @@ export default function App() {
             </button>
           </div>
 
+          {/* Section: PESSOAS & ESTRUTURA */}
+          <div className="space-y-1">
+            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">8. Pessoas & Estrutura</span>
+            <button
+              onClick={() => setAppView('rh')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'rh'
+                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]'
+                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Users className="w-4 h-4 text-violet-300 shrink-0" />
+              <span>RH, Setores & Máquinas</span>
+            </button>
+          </div>
+
           {/* Section: ADMIN */}
           {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
             <div className="space-y-1">
@@ -2073,6 +2116,9 @@ export default function App() {
             <optgroup label="7. CAMPO">
               <option value="modulo10">🔧 Manutenção & Ciclos (M10)</option>
             </optgroup>
+            <optgroup label="8. PESSOAS & ESTRUTURA">
+              <option value="rh">👥 RH, Setores & Máquinas</option>
+            </optgroup>
             {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
               <optgroup label="ADMIN">
                 <option value="organizacao">⚙️ Minha Organização</option>
@@ -2105,6 +2151,7 @@ export default function App() {
               {appView === 'modulo8' && '💰 Financeiro e DRE'}
               {appView === 'modulo9' && '🛒 Compras Triple-Vendor'}
               {appView === 'modulo10' && '🔧 Manutenção de Moldes'}
+              {appView === 'rh' && '👥 Pessoas, RH & Estrutura'}
               {appView === 'organizacao' && '⚙️ Configurações de Organização'}
               {appView === 'acessos' && '🔒 Controle de Acessos'}
             </h2>
@@ -3205,6 +3252,15 @@ export default function App() {
             logs={erpMaintLogs}
             projects={erpProjects}
             onSaveLogs={setErpMaintLogs}
+            showToast={showToast}
+          />
+        )}
+
+        {appView === 'rh' && (
+          <ModuloRH
+            canManage={userProfile?.role === 'admin' || userProfile?.role === 'manager'}
+            operations={workflowOperations}
+            onAssignOperation={handleAssignOperation}
             showToast={showToast}
           />
         )}

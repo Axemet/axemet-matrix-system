@@ -115,6 +115,30 @@ body {
   box-shadow: 0 12px 28px rgba(18, 44, 70, .05) !important;
 }
 
+/* People & operations module */
+.rh-hero {
+  background:
+    radial-gradient(circle at 90% 15%, rgba(213,173,74,.28), transparent 18rem),
+    linear-gradient(125deg, #071a2e, #12416a);
+  box-shadow: 0 18px 38px rgba(8, 32, 56, .16);
+}
+.rh-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
+  border-radius: .75rem;
+  background: #1d5f9e;
+  color: white;
+  padding: .6rem .85rem;
+  font-size: .72rem;
+  font-weight: 800;
+  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
+  box-shadow: 0 6px 15px rgba(29,95,158,.2);
+}
+.rh-primary:hover { background: #124a80; transform: translateY(-1px); }
+.rh-tabs::-webkit-scrollbar { display: none; }
+
 @media (max-width: 768px) {
   .axemet-main { padding: 18px 14px 88px; }
   .axemet-hero { min-height: auto; border-radius: 18px !important; }
