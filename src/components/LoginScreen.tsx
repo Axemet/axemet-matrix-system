@@ -22,11 +22,13 @@ import { isSupabaseConfigured, signInUser, signUpUser, supabase } from '../lib/s
 
 interface LoginScreenProps {
   onLogin: (user: string, pass: string, rememberMe: boolean) => boolean;
+  forceRecovery?: boolean;
+  onRecoveryComplete?: () => void;
 }
 
-export default function LoginScreen({ onLogin }: LoginScreenProps) {
+export default function LoginScreen({ onLogin, forceRecovery = false, onRecoveryComplete }: LoginScreenProps) {
   const [isSignUp, setIsSignUp] = React.useState(false);
-  const [isForgotPassword, setIsForgotPassword] = React.useState(false);
+  const [isForgotPassword, setIsForgotPassword] = React.useState(forceRecovery);
   
   // Form states
   const [usernameOrEmail, setUsernameOrEmail] = React.useState('');
@@ -64,8 +66,15 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   React.useEffect(() => {
     if (!isSupabaseConfigured) return;
     const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
-    const isRecoveryLink = hash.get('type') === 'recovery' || (new URLSearchParams(window.location.search).get('recovery') === '1' && !!hash.get('access_token'));
-    if (isRecoveryLink) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isRecoveryRoute = forceRecovery || urlParams.get('recovery') === '1';
+    const isExpired = hash.get('error_code') === 'otp_expired' || hash.get('error') === 'access_denied';
+    const isRecoveryLink = hash.get('type') === 'recovery' || (!!hash.get('access_token') && isRecoveryRoute);
+    if (isExpired && isRecoveryRoute) {
+      setIsForgotPassword(true);
+      setRecoveryView('input_email');
+      setError('Este link de recuperação expirou ou já foi utilizado. Solicite um novo link abaixo.');
+    } else if (isRecoveryLink) {
       setIsForgotPassword(true);
       setRecoveryView('enter_code');
     }
@@ -78,7 +87,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       }
     });
     return () => subscription.unsubscribe();
-  }, []);
+  }, [forceRecovery]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -300,6 +309,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 <button
                   type="button"
                   onClick={() => {
+                    if (forceRecovery) onRecoveryComplete?.();
                     setIsForgotPassword(false);
                     setRecoveryView('input_email');
                     setError(null);
@@ -461,7 +471,9 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                   </div>
 
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      await supabase.auth.signOut();
+                      onRecoveryComplete?.();
                       setIsForgotPassword(false);
                       setRecoveryView('input_email');
                       setError(null);

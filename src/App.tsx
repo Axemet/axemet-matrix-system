@@ -559,6 +559,11 @@ export default function App() {
   // User Authentication State
   // Access is granted exclusively by Supabase Auth and an active database profile.
   const [isLoggedIn, setIsLoggedIn] = React.useState(false);
+  const [forceRecoveryScreen, setForceRecoveryScreen] = React.useState(() => {
+    const query = new URLSearchParams(window.location.search);
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    return query.get('recovery') === '1' || hash.get('type') === 'recovery';
+  });
   const [currentUser, setCurrentUser] = React.useState<any>(null);
   const [userProfile, setUserProfile] = React.useState<UserProfile | null>(null);
   const [profilesList, setProfilesList] = React.useState<UserProfile[]>([]);
@@ -1458,7 +1463,7 @@ export default function App() {
     showToast('Relatório PDF exportado com sucesso!');
   };
 
-  if (!isLoggedIn) {
+  if (!isLoggedIn || forceRecoveryScreen) {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col justify-center relative overflow-y-auto py-10">
         {toastMessage && (
@@ -1487,7 +1492,14 @@ export default function App() {
           </div>
         )}
 
-        <LoginScreen onLogin={handleLoginAttempt} />
+        <LoginScreen
+          onLogin={handleLoginAttempt}
+          forceRecovery={forceRecoveryScreen}
+          onRecoveryComplete={() => {
+            setForceRecoveryScreen(false);
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }}
+        />
 
         {/* Render SQL guide modal here so it can be opened from login screen */}
         {showSchemaGuide && (
