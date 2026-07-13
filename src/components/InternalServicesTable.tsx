@@ -28,16 +28,10 @@ export default function InternalServicesTable({
     return new Set(machiningTypes.map(mt => mt.name.toLowerCase().trim()));
   }, [machiningTypes]);
 
-  // Restrict displayed services to ONLY:
-  // - "Projeto" (Fixed manual)
-  // - "Matrizaria" (Fixed manual)
-  // - Machining services synced automatically from other tabs
+  // All services configured by the company must be visible. Only services
+  // that match a machining type are fed automatically by the machining tab.
   const displayedServices = React.useMemo(() => {
-    const fixedManualNames = new Set(['projeto', 'matrizaria']);
-    return services.filter(s => {
-      const nameLower = s.name.toLowerCase().trim();
-      return fixedManualNames.has(nameLower) || machiningNames.has(nameLower);
-    });
+    return services;
   }, [services, machiningNames]);
 
   return (
@@ -64,8 +58,7 @@ export default function InternalServicesTable({
       {/* Mobile view of services */}
       <div className="block md:hidden space-y-3">
         {displayedServices.map((s) => {
-          const isFixedManual = s.name.toLowerCase().trim() === 'projeto' || s.name.toLowerCase().trim() === 'matrizaria';
-          const isSyncedAuto = !isFixedManual;
+          const isSyncedAuto = machiningNames.has(s.name.toLowerCase().trim());
 
           return (
             <div key={s.id} className="bg-slate-50/50 rounded-xl p-3.5 border border-gray-150 space-y-3">
@@ -143,8 +136,7 @@ export default function InternalServicesTable({
               </thead>
               <tbody className="divide-y divide-gray-50 text-xs text-gray-900 bg-white">
                 {displayedServices.map((s) => {
-                  const isFixedManual = s.name.toLowerCase().trim() === 'projeto' || s.name.toLowerCase().trim() === 'matrizaria';
-                  const isSyncedAuto = !isFixedManual;
+                  const isSyncedAuto = machiningNames.has(s.name.toLowerCase().trim());
 
                   return (
                     <tr 
@@ -221,7 +213,7 @@ export default function InternalServicesTable({
       <div className="p-3.5 bg-gray-50 rounded-xl border border-gray-100 flex items-start gap-2">
         <HelpCircle className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
         <span className="text-[10px] text-gray-500">
-          Apenas <strong>Projeto</strong> e <strong>Matrizaria</strong> são lançados manualmente nesta aba. As demais usinagens e processos são <strong>automaticamente alimentados</strong> de acordo com os tempos informados em cada chapa na aba <strong>Tempos Usinagem</strong>.
+          Todos os serviços cadastrados em <strong>Configurações</strong> aparecem nesta lista e podem ser lançados manualmente. Apenas os serviços que correspondem a um tipo de usinagem são <strong>alimentados automaticamente</strong> pela aba <strong>Tempos Usinagem</strong>.
         </span>
       </div>
 

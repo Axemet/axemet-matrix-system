@@ -1252,16 +1252,11 @@ export default function App() {
   };
 
   const handleSaveServiceRates = async (newRates: InternalServiceItem[]) => {
-    setInternalServices(prev =>
-      prev.map((item) => {
-        const found = newRates.find(r => r.id === item.id);
-        if (found) {
-          const valUnit = found.valUnit;
-          return { ...item, valUnit, total: item.qtd * valUnit };
-        }
-        return item;
-      })
-    );
+    setInternalServices(previous => newRates.map(rate => {
+      const existing = previous.find(item => item.id === rate.id) || previous.find(item => item.name.trim().toLowerCase() === rate.name.trim().toLowerCase());
+      const qtd = existing?.qtd || 0;
+      return { ...rate, qtd, total: qtd * rate.valUnit };
+    }));
     localStorage.setItem('orcamolde_service_rates', JSON.stringify(newRates));
     if (isSupabaseConfigured) {
       try {
