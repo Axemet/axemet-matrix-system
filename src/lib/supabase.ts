@@ -227,6 +227,8 @@ export function mapDbBudgetToBudget(db: any): BudgetDraft {
     crmStatus: configObj.crmStatus || undefined,
     proposalItems: configObj.proposalItems || undefined,
     commercialTerms: configObj.commercialTerms || undefined,
+    representativeName: configObj.representativeName || undefined,
+    representativeEmail: configObj.representativeEmail || undefined,
   };
 }
 
@@ -238,6 +240,8 @@ export function mapBudgetToDbBudget(b: BudgetDraft) {
     crmStatus: b.crmStatus || 'quoting',
     proposalItems: b.proposalItems || [],
     commercialTerms: b.commercialTerms || null,
+    representativeName: b.representativeName || null,
+    representativeEmail: b.representativeEmail || null,
   };
 
   return {

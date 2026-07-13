@@ -94,6 +94,8 @@ export interface BudgetDraft {
   discountValue?: number;
   proposalItems?: ProposalItem[];
   commercialTerms?: CommercialTerms;
+  representativeName?: string;
+  representativeEmail?: string;
   totals: {
     materialsTotal: number;
     thirdPartyTotal: number;
@@ -116,6 +118,7 @@ export interface ProposalItem {
   description: string;
   quantity: number;
   unitPrice: number;
+  sourceTechnicalReference?: string;
 }
 
 export interface CommercialBillingEvent {

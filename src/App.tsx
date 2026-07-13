@@ -1089,6 +1089,43 @@ export default function App() {
   // --- CALCULATE ALL TOTALS ON EACH RENDER ---
   const totals = calculateTotals(materials, thirdPartyItems, internalServices, config);
 
+  const handleAddCurrentTechnicalItem = () => {
+    if (!moldDescription.trim()) {
+      showToast('Informe a descrição do molde antes de incorporar o cálculo técnico.', 'error');
+      return;
+    }
+    const calculatedPrice = Math.max(0, totals.finalPrice - (discountValue || 0));
+    if (calculatedPrice <= 0) {
+      showToast('Conclua o orçamento técnico do item antes de incorporá-lo à proposta.', 'error');
+      return;
+    }
+    setProposalItems(previous => [...previous, {
+      id: `proposal_technical_${Date.now()}`,
+      description: moldDescription.trim(),
+      quantity: 1,
+      unitPrice: calculatedPrice,
+      sourceTechnicalReference: `${reference || 'Sem referência'} · ${moldType || 'Orçamento técnico'}`,
+    }]);
+    showToast(`Cálculo técnico de “${moldDescription.trim()}” incorporado à proposta consolidada.`, 'success');
+  };
+
+  const handlePrepareNextTechnicalItem = () => {
+    setMoldType('');
+    setMoldingMaterial('');
+    setProductQuantity(0);
+    setMoldDescription('');
+    setMoldWidth(0);
+    setMoldLength(0);
+    setDiscountPercent(0);
+    setDiscountValue(0);
+    setMaterials(generateZeroMaterials(config, rawMaterials));
+    setThirdPartyItems([]);
+    setInternalServices(previous => previous.map(item => ({ ...item, qtd: 0, total: 0 })));
+    setActiveTab('dados');
+    setTimeout(() => document.getElementById('client-name-input')?.focus(), 100);
+    showToast('Próximo item técnico iniciado. O cliente e a proposta consolidada foram preservados.', 'info');
+  };
+
   const machiningTotal = React.useMemo(() => {
     let sum = 0;
     materials.forEach(m => {
@@ -1306,6 +1343,8 @@ export default function App() {
       discountValue,
       proposalItems,
       commercialTerms,
+      representativeName: userProfile?.full_name || currentUser?.email || '',
+      representativeEmail: currentUser?.email || '',
       totals,
       machiningTypes,
     };
@@ -1492,6 +1531,8 @@ export default function App() {
       discountValue,
       proposalItems,
       commercialTerms,
+      representativeName: userProfile?.full_name || currentUser?.email || '',
+      representativeEmail: currentUser?.email || '',
       totals,
       machiningTypes,
     };
@@ -2561,6 +2602,8 @@ export default function App() {
                     terms={commercialTerms}
                     onItemsChange={setProposalItems}
                     onTermsChange={setCommercialTerms}
+                    onAddCurrentTechnicalItem={handleAddCurrentTechnicalItem}
+                    onPrepareNextTechnicalItem={handlePrepareNextTechnicalItem}
                   />
                   <div className="h-6" />
                   <QuoteSummary

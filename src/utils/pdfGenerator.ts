@@ -62,9 +62,12 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
     text(truncate(value || 'Não informado', max), x + labelWidth, atY, 7.7, { color: navy });
   };
 
-  // Header: white background so every organization logo stays clear in print.
-  doc.setFillColor(255, 255, 255); doc.roundedRect(left, y, width, 27, 2, 2, 'F');
-  doc.setDrawColor(203, 213, 225); doc.roundedRect(left, y, width, 27, 2, 2, 'S');
+  // Header grouped in three blocks: brand, issuer and proposal/representative.
+  // The white background is intentionally optimized for print and logos.
+  doc.setFillColor(255, 255, 255); doc.roundedRect(left, y, width, 42, 2, 2, 'F');
+  doc.setDrawColor(203, 213, 225); doc.roundedRect(left, y, width, 42, 2, 2, 'S');
+  doc.line(left + 45, y + 3, left + 45, y + 39);
+  doc.line(left + 126, y + 3, left + 126, y + 39);
   let logoRendered = false;
   if (organization.logo_url && /^data:image\/(png|jpeg|jpg);base64,/i.test(organization.logo_url)) {
     try {
@@ -75,22 +78,28 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
       const maxHeight = 18;
       const renderWidth = ratio >= maxWidth / maxHeight ? maxWidth : maxHeight * ratio;
       const renderHeight = ratio >= maxWidth / maxHeight ? maxWidth / ratio : maxHeight;
-      doc.addImage(organization.logo_url, format, left + 5, y + (27 - renderHeight) / 2, renderWidth, renderHeight);
+      doc.addImage(organization.logo_url, format, left + (45 - renderWidth) / 2, y + (42 - renderHeight) / 2, renderWidth, renderHeight);
       logoRendered = true;
     } catch (error) { console.warn('Logo não pôde ser inserido na proposta.', error); }
   }
   if (!logoRendered) {
-    doc.setFillColor(...light); doc.roundedRect(left + 5, y + 5, 31, 17, 2, 2, 'F');
-    text('AX', left + 20.5, y + 16, 13, { align: 'center', bold: true, color: navy });
+    doc.setFillColor(...light); doc.roundedRect(left + 7, y + 10, 31, 20, 2, 2, 'F');
+    text('AX', left + 22.5, y + 23, 13, { align: 'center', bold: true, color: navy });
   }
-  text(organization.name.toUpperCase(), left + 47, y + 9, 10.5, { bold: true, color: navy });
-  const contactLines = [organization.cnpj && `CNPJ: ${organization.cnpj}`, organization.phone && `Tel.: ${organization.phone}`, organization.email].filter(Boolean).join('  |  ');
-  text(truncate(contactLines || 'Dados comerciais da empresa', 80), left + 47, y + 14, 6.8, { color: slate });
-  text(truncate(organization.address || '', 90), left + 47, y + 18.5, 6.6, { color: slate });
-  text('PROPOSTA COMERCIAL', right - 5, y + 9, 10, { align: 'right', bold: true, color: navy });
-  text(`Nº ${draft.reference || draft.id.slice(0, 8).toUpperCase()}`, right - 5, y + 15, 7.4, { align: 'right', color: slate });
-  text(`Emissão: ${new Date(draft.date || Date.now()).toLocaleDateString('pt-BR')}`, right - 5, y + 19.5, 6.8, { align: 'right', color: slate });
-  y += 34;
+  const issuerX = left + 49;
+  const proposalX = left + 130;
+  text('EMITENTE', issuerX, y + 6, 6.2, { bold: true, color: gold });
+  text(truncate(organization.name.toUpperCase(), 42), issuerX, y + 12, 9, { bold: true, color: navy });
+  text(truncate([organization.cnpj && `CNPJ: ${organization.cnpj}`, organization.phone && `Tel.: ${organization.phone}`].filter(Boolean).join('  |  ') || 'Dados corporativos', 58), issuerX, y + 17, 6.4, { color: slate });
+  text(truncate(organization.email || '', 58), issuerX, y + 22, 6.4, { color: slate });
+  text(truncate(organization.address || '', 58), issuerX, y + 27, 6.2, { color: slate });
+  text('PROPOSTA COMERCIAL', proposalX, y + 7, 8.5, { bold: true, color: navy });
+  text(`Nº ${draft.reference || draft.id.slice(0, 8).toUpperCase()}`, proposalX, y + 13, 7.2, { bold: true, color: slate });
+  text(`Emissão: ${new Date(draft.date || Date.now()).toLocaleDateString('pt-BR')}`, proposalX, y + 18, 6.5, { color: slate });
+  text('REPRESENTANTE', proposalX, y + 25, 6.2, { bold: true, color: gold });
+  text(truncate(draft.representativeName || 'Não informado', 36), proposalX, y + 31, 7.3, { bold: true, color: navy });
+  text(truncate(draft.representativeEmail || '', 40), proposalX, y + 36, 6.3, { color: slate });
+  y += 49;
 
   text('DADOS DO CLIENTE', left, y, 8.5, { bold: true, color: navy });
   line(y + 2, gold); y += 8;
