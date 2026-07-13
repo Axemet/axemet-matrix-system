@@ -782,6 +782,7 @@ export default function App() {
   // Drafts History State
   const [drafts, setDrafts] = React.useState<BudgetDraft[]>([]);
   const [activeDraftId, setActiveDraftId] = React.useState<string | null>(null);
+  const [editingProposalItemId, setEditingProposalItemId] = React.useState<string | null>(null);
   const [approvalDraft, setApprovalDraft] = React.useState<BudgetDraft | null>(null);
   const [approvalProjectCode, setApprovalProjectCode] = React.useState('');
   const [approvalDueDate, setApprovalDueDate] = React.useState('');
@@ -1098,6 +1099,8 @@ export default function App() {
 
   // --- CALCULATE ALL TOTALS ON EACH RENDER ---
   const totals = calculateTotals(materials, thirdPartyItems, internalServices, config);
+  const proposalTotal = proposalItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
+  const closingPrice = proposalTotal > 0 ? proposalTotal : totals.finalPrice;
 
   const handleAddCurrentTechnicalItem = () => {
     if (!moldDescription.trim()) {
@@ -1109,18 +1112,58 @@ export default function App() {
       showToast('Conclua o orçamento técnico do item antes de incorporá-lo à proposta.', 'error');
       return;
     }
-    setProposalItems(previous => [...previous, {
-      id: `proposal_technical_${Date.now()}`,
+    const technicalSnapshot: Partial<BudgetDraft> = {
+      reference, clientName, contactName, moldType, moldingMaterial, productQuantity, deliveryTime, observations, status,
+      moldDescription, date, moldWidth, moldLength, materials, thirdPartyItems, internalServices, config,
+      discountPercent, discountValue, totals, machiningTypes,
+    };
+    const calculatedItem: ProposalItem = {
+      id: editingProposalItemId || `proposal_technical_${Date.now()}`,
       title: moldDescription.trim(),
       description: moldType.trim() || 'Ferramental sob encomenda',
       quantity: 1,
       unitPrice: calculatedPrice,
       sourceTechnicalReference: reference || 'Sem referência',
-    }]);
-    showToast(`Cálculo técnico de “${moldDescription.trim()}” incorporado à proposta consolidada.`, 'success');
+      technicalSnapshot,
+    };
+    setProposalItems(previous => editingProposalItemId ? previous.map(item => item.id === editingProposalItemId ? calculatedItem : item) : [...previous, calculatedItem]);
+    setEditingProposalItemId(null);
+    showToast(editingProposalItemId ? `Item “${moldDescription.trim()}” recalculado e atualizado na proposta.` : `Cálculo técnico de “${moldDescription.trim()}” incorporado à proposta consolidada.`, 'success');
+  };
+
+  const handleEditTechnicalProposalItem = (id: string) => {
+    const item = proposalItems.find(current => current.id === id);
+    const snapshot = item?.technicalSnapshot;
+    if (!item || !snapshot) {
+      showToast('Este item foi criado em uma versão anterior e não possui memória técnica para reabertura.', 'error');
+      return;
+    }
+    setEditingProposalItemId(id);
+    setClientName(snapshot.clientName || clientName);
+    setContactName(snapshot.contactName || '');
+    setMoldType(snapshot.moldType || '');
+    setMoldingMaterial(snapshot.moldingMaterial || '');
+    setProductQuantity(snapshot.productQuantity || 0);
+    setDeliveryTime(snapshot.deliveryTime || '');
+    setObservations(snapshot.observations || '');
+    setStatus(snapshot.status || 'draft');
+    setMoldDescription(snapshot.moldDescription || item.title || '');
+    setDate(snapshot.date || new Date().toISOString().split('T')[0]);
+    setMoldWidth(snapshot.moldWidth || 0);
+    setMoldLength(snapshot.moldLength || 0);
+    setMaterials(snapshot.materials || []);
+    setThirdPartyItems(snapshot.thirdPartyItems || []);
+    setInternalServices(snapshot.internalServices || []);
+    if (snapshot.config) setConfig(snapshot.config);
+    if (snapshot.machiningTypes) setMachiningTypes(snapshot.machiningTypes);
+    setDiscountPercent(snapshot.discountPercent || 0);
+    setDiscountValue(snapshot.discountValue || 0);
+    setActiveTab('dados');
+    showToast('Item reaberto. Edite todos os campos técnicos e clique em “Incorporar cálculo atual” para atualizar a proposta.', 'info');
   };
 
   const handlePrepareNextTechnicalItem = () => {
+    setEditingProposalItemId(null);
     setMoldType('');
     setMoldingMaterial('');
     setProductQuantity(0);
@@ -1448,6 +1491,7 @@ export default function App() {
   // Clear current active quote editor
   const handleClearForm = () => {
     setActiveDraftId(null);
+    setEditingProposalItemId(null);
     setClientName('');
     setContactName('');
     setMoldType('');
@@ -1479,6 +1523,7 @@ export default function App() {
   // --- GERAL NOVO (CLEAN BLANK START) ---
   const handleGeralNovo = () => {
     setActiveDraftId(null);
+    setEditingProposalItemId(null);
     setClientName('');
     setContactName('');
     setMoldType('');
@@ -2608,6 +2653,7 @@ export default function App() {
                     terms={commercialTerms}
                     onItemsChange={setProposalItems}
                     onTermsChange={setCommercialTerms}
+                    onEditTechnicalItem={handleEditTechnicalProposalItem}
                     onAddCurrentTechnicalItem={handleAddCurrentTechnicalItem}
                     onPrepareNextTechnicalItem={handlePrepareNextTechnicalItem}
                   />
@@ -2615,17 +2661,18 @@ export default function App() {
                   <QuoteSummary
                     totals={totals}
                     config={config}
+                    proposalTotal={closingPrice}
                     onSaveDraft={handleSaveDraft}
                     onExportPDF={handleExportPDF}
                     discountPercent={discountPercent}
                     onDiscountPercentChange={(val) => {
                       setDiscountPercent(val);
-                      setDiscountValue(totals.finalPrice * (val / 100));
+                      setDiscountValue(closingPrice * (val / 100));
                     }}
                     discountValue={discountValue}
                     onDiscountValueChange={(val) => {
                       setDiscountValue(val);
-                      setDiscountPercent(totals.finalPrice > 0 ? (val / totals.finalPrice) * 100 : 0);
+                      setDiscountPercent(closingPrice > 0 ? (val / closingPrice) * 100 : 0);
                     }}
                   />
                 </section>

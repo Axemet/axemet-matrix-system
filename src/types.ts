@@ -123,6 +123,8 @@ export interface ProposalItem {
   quantity: number;
   unitPrice: number;
   sourceTechnicalReference?: string;
+  /** Snapshot completo do cálculo para que o item possa ser reaberto e recalculado. */
+  technicalSnapshot?: Partial<BudgetDraft>;
 }
 
 export interface CommercialBillingEvent {

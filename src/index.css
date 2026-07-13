@@ -209,19 +209,17 @@ h1, h2, h3, h4, h5, h6 { font-family: "Sora", ui-sans-serif, sans-serif; letter-
 .axemet-main label { line-height: 1.35; }
 .axemet-main input:not([type='checkbox']):not([type='radio']),
 .axemet-main select {
-  min-height: 40px;
-  font-size: .875rem !important;
-  line-height: 1.25rem;
+  font-size: .84rem !important;
 }
 .axemet-main textarea { font-size: .875rem !important; line-height: 1.45; }
 .axemet-main input::placeholder,
 .axemet-main textarea::placeholder { color: #94a3b8; opacity: 1; }
-.axemet-main .text-xs { font-size: .78rem; }
-.axemet-main .text-\[10px\] { font-size: .68rem; }
 .axemet-sidebar { width: 16.75rem !important; }
-.axemet-sidebar .space-y-4 { gap: 8px !important; }
-.axemet-sidebar .space-y-1 { gap: 2px !important; }
-.axemet-sidebar button { min-height: 34px; padding-top: .42rem; padding-bottom: .42rem; font-size: .78rem; }
-.axemet-sidebar span[class*='tracking-widest'] { margin-top: 6px; margin-bottom: 2px !important; font-size: .56rem; }
+.axemet-sidebar .flex-1 { padding: .55rem .55rem !important; }
+.axemet-sidebar .space-y-4 { gap: 5px !important; }
+.axemet-sidebar .space-y-1 { gap: 0 !important; }
+.axemet-sidebar button { min-height: 30px; padding: .34rem .55rem !important; font-size: .73rem; }
+.axemet-sidebar button svg { width: .9rem; height: .9rem; }
+.axemet-sidebar span[class*='tracking-widest'] { margin-top: 4px; margin-bottom: 1px !important; font-size: .53rem; line-height: 1.1; }
 .axemet-sidebar .axemet-org { margin-top: 6px; margin-bottom: 2px; }
 @media (min-width: 1280px) { .axemet-sidebar { width: 17.25rem !important; } }

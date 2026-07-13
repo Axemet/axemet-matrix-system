@@ -18,6 +18,7 @@ interface QuoteSummaryProps {
   onDiscountPercentChange?: (val: number) => void;
   discountValue?: number;
   onDiscountValueChange?: (val: number) => void;
+  proposalTotal?: number;
 }
 
 export default function QuoteSummary({ 
@@ -29,7 +30,10 @@ export default function QuoteSummary({
   onDiscountPercentChange,
   discountValue = 0,
   onDiscountValueChange,
+  proposalTotal,
 }: QuoteSummaryProps) {
+  const displayTotal = proposalTotal && proposalTotal > 0 ? proposalTotal : totals.finalPrice;
+  const hasConsolidatedProposal = !!proposalTotal && proposalTotal > 0;
   return (
     <div className="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
       
@@ -138,9 +142,9 @@ export default function QuoteSummary({
 
             {/* Custo total do orçamento */}
             <div className="flex items-center justify-between py-2.5 px-2 bg-indigo-600 text-white rounded-lg font-bold shadow-xs">
-              <span>Preço de Venda Final de Tabela:</span>
+              <span>{hasConsolidatedProposal ? 'Valor consolidado da proposta:' : 'Preço de Venda Final de Tabela:'}</span>
               <span className="font-mono text-white text-base">
-                {formatCurrency(totals.finalPrice)}
+                {formatCurrency(displayTotal)}
               </span>
             </div>
 
@@ -221,7 +225,7 @@ export default function QuoteSummary({
                     <input
                       type="number"
                       min="0"
-                      max={totals.finalPrice}
+                      max={displayTotal}
                       step="1"
                       value={discountValue ? parseFloat(discountValue.toFixed(2)) : ''}
                       onChange={(e) => {
@@ -245,26 +249,26 @@ export default function QuoteSummary({
               {discountValue > 0 ? (
                 <>
                   <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-1 font-mono">
-                    Tabela: {formatCurrency(totals.finalPrice)}
+                    Tabela: {formatCurrency(displayTotal)}
                   </span>
                   <span className="text-[9px] font-semibold text-rose-400 uppercase tracking-wide mb-2.5">
                     Desconto: -{formatCurrency(discountValue)} ({formatNumber(discountPercent, 1)}%)
                   </span>
                   
                   <span className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">
-                    Preço Final Negociado
+                    {hasConsolidatedProposal ? 'Total negociado da proposta' : 'Preço Final Negociado'}
                   </span>
                   <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-400 mb-2">
-                    {formatCurrency(totals.finalPrice - discountValue)}
+                    {formatCurrency(displayTotal - discountValue)}
                   </span>
                 </>
               ) : (
                 <>
                   <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">
-                    Preço de Venda Sugerido
+                    {hasConsolidatedProposal ? 'Total da proposta' : 'Preço de Venda Sugerido'}
                   </span>
                   <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white mb-2">
-                    {formatCurrency(totals.finalPrice)}
+                    {formatCurrency(displayTotal)}
                   </span>
                 </>
               )}
