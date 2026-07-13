@@ -16,6 +16,11 @@ interface BudgetListProps {
   onDeleteDraft: (id: string) => void;
 }
 
+const getCommercialBudgetValue = (draft: BudgetDraft) => {
+  const consolidated = (draft.proposalItems || []).reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
+  return consolidated > 0 ? consolidated : Math.max(0, (draft.totals?.finalPrice || 0) - (draft.discountValue || 0));
+};
+
 export default function BudgetList({
   isOpen,
   onClose,
@@ -87,7 +92,7 @@ export default function BudgetList({
                       {draft.clientName || 'Cliente sem nome'}
                     </span>
                     <span className="text-xs font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full whitespace-nowrap">
-                      {formatCurrency(draft.totals.finalPrice)}
+                      {formatCurrency(getCommercialBudgetValue(draft))}
                     </span>
                   </div>
 

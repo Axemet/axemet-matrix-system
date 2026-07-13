@@ -168,6 +168,15 @@ function createDefaultCommercialTerms(): CommercialTerms {
   };
 }
 
+/** Value actually presented to the customer: all consolidated technical items. */
+function getCommercialBudgetValue(budget: BudgetDraft): number {
+  const consolidated = (budget.proposalItems || []).reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0),
+    0,
+  );
+  return consolidated > 0 ? consolidated : Math.max(0, (budget.totals?.finalPrice || 0) - (budget.discountValue || 0));
+}
+
 function normalizePermissions(source: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean; approve: boolean }>) {
   const map: Record<string, string> = { Comercial: 'comercial', Engenharia: 'engenharia', PCP: 'pcp', Produção: 'producao', Almoxarifado: 'estoque', Compras: 'compras', Qualidade: 'qualidade', Controladoria: 'controladoria', Financeiro: 'financeiro', Manutenção: 'manutencao', BI: 'bi' };
   return Object.fromEntries(Object.entries(source).map(([key, value]) => [map[key] || key.toLowerCase(), value]));
@@ -2213,7 +2222,7 @@ export default function App() {
                     <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-wider mb-1">Faturamento Aprovado</p>
                     <p className="text-base sm:text-lg font-black font-heading text-indigo-300 truncate">
                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 }).format(
-                        drafts.filter(d => d.status === 'approved').reduce((acc, curr) => acc + (curr.totals?.finalPrice || 0), 0)
+                        drafts.filter(d => d.status === 'approved').reduce((acc, curr) => acc + getCommercialBudgetValue(curr), 0)
                       )}
                     </p>
                   </div>
@@ -2390,9 +2399,9 @@ export default function App() {
                       {/* Card Footer */}
                       <div className="p-4 pt-2 border-t border-slate-100 bg-slate-50/20 flex items-center justify-between gap-2">
                         <div>
-                          <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider font-heading">Preço Comercial final</span>
+                          <span className="text-[9px] font-bold text-slate-400 block uppercase tracking-wider font-heading">Valor comercial consolidado</span>
                           <span className="text-sm font-black text-[#EA580C] font-mono">
-                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(draft.totals.finalPrice)}
+                            {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(getCommercialBudgetValue(draft))}
                           </span>
                         </div>
 
