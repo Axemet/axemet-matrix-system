@@ -30,16 +30,32 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   });
 
   const [dragActive, setDragActive] = React.useState(false);
+  const [saving, setSaving] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => { getOrganizationProfile().then(profile => { if (profile) setConfig(prev => ({...prev, ...profile, logo: profile.logo_url || ''})); }).catch((error:any) => showToast(error.message || 'Não foi possível carregar a organização.', 'error')); }, [showToast]);
 
-  const handleSave = async () => {
+  const persistConfig = async (nextConfig: OrganizationConfig, successMessage = 'Dados da organização salvos no banco corporativo.') => {
+    setSaving(true);
     try {
-      await updateOrganizationProfile({ id: config.id, name: config.name, cnpj: config.cnpj, phone: config.phone, email: config.email, address: config.address, logo_url: config.logo || undefined });
-      showToast('Dados da organização salvos no banco corporativo.', 'success');
+      const saved = await updateOrganizationProfile({ id: nextConfig.id, name: nextConfig.name, cnpj: nextConfig.cnpj, phone: nextConfig.phone, email: nextConfig.email, address: nextConfig.address, logo_url: nextConfig.logo || null });
+      setConfig(current => ({
+        ...current,
+        id: saved.id || current.id,
+        name: saved.name || current.name,
+        cnpj: saved.cnpj || '',
+        phone: saved.phone || '',
+        email: saved.email || '',
+        address: saved.address || '',
+        logo: saved.logo_url || '',
+        logoWidth: nextConfig.logoWidth,
+        logoHeight: nextConfig.logoHeight,
+      }));
+      showToast(successMessage, 'success');
     } catch (error:any) { showToast(error.message || 'Não foi possível salvar a organização.', 'error'); }
+    finally { setSaving(false); }
   };
+  const handleSave = async () => { await persistConfig(config); };
 
   const handleLogoUpload = (file: File) => {
     if (!file) return;
@@ -47,8 +63,8 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
       showToast('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP).', 'error');
       return;
     }
-    if (file.size > 1024 * 1024) { // 1MB Limit for storage safety
-      showToast('O logotipo deve ter no máximo 1MB.', 'error');
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('O arquivo original do logotipo deve ter no máximo 5MB.', 'error');
       return;
     }
 
@@ -86,18 +102,14 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
             // Standardize as PNG (which preserves transparency and is universally supported in jsPDF)
             const cleanDataUrl = canvas.toDataURL('image/png');
             
-            setConfig(prev => {
-              const newConfig = { ...prev, logo: cleanDataUrl, logoWidth: width, logoHeight: height };
-              return newConfig;
-            });
-            showToast('Logotipo carregado, otimizado e salvo com sucesso!', 'success');
+            const nextConfig = { ...config, logo: cleanDataUrl, logoWidth: width, logoHeight: height };
+            setConfig(nextConfig);
+            void persistConfig(nextConfig, 'Logotipo salvo e vinculado à organização.');
           } else {
             // Fallback if canvas context is not available
-            setConfig(prev => {
-              const newConfig = { ...prev, logo: logoDataUrl, logoWidth: img.width, logoHeight: img.height };
-              return newConfig;
-            });
-            showToast('Logotipo carregado com sucesso!', 'success');
+            const nextConfig = { ...config, logo: logoDataUrl, logoWidth: img.width, logoHeight: img.height };
+            setConfig(nextConfig);
+            void persistConfig(nextConfig, 'Logotipo salvo e vinculado à organização.');
           }
         };
         img.onerror = () => {
@@ -129,11 +141,9 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   };
 
   const handleRemoveLogo = () => {
-    setConfig(prev => {
-      const newConfig = { ...prev, logo: '', logoWidth: undefined, logoHeight: undefined };
-      return newConfig;
-    });
-    showToast('Logotipo removido.', 'info');
+    const nextConfig = { ...config, logo: '', logoWidth: undefined, logoHeight: undefined };
+    setConfig(nextConfig);
+    void persistConfig(nextConfig, 'Logotipo removido da organização.');
   };
 
   return (
@@ -169,6 +179,12 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
             <div className="relative border border-slate-200 rounded-xl p-4 bg-slate-50 flex flex-col items-center justify-center min-h-[160px] group">
               <img src={config.logo} alt="Organization Logo" className="max-h-[100px] max-w-full object-contain" />
               <button
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-3 px-3 py-1.5 bg-white border border-slate-200 hover:border-orange-300 text-slate-700 rounded-lg text-[10px] font-bold transition cursor-pointer"
+              >
+                Trocar logotipo
+              </button>
+              <button
                 onClick={handleRemoveLogo}
                 className="absolute top-2 right-2 p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg transition cursor-pointer"
                 title="Remover Logotipo"
@@ -192,19 +208,18 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
                 <p className="text-xs font-bold text-slate-700">Arraste seu logotipo ou clique para buscar</p>
                 <p className="text-[10px] text-slate-400 mt-1">Formatos PNG, JPG ou WEBP (Max. 1MB)</p>
               </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/*"
-                onChange={(e) => {
-                  if (e.target.files && e.target.files[0]) {
-                    handleLogoUpload(e.target.files[0]);
-                  }
-                }}
-              />
             </div>
           )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(e) => {
+              if (e.target.files && e.target.files[0]) handleLogoUpload(e.target.files[0]);
+              e.currentTarget.value = '';
+            }}
+          />
 
           <div className="p-3 bg-orange-50/60 border border-orange-100 rounded-lg space-y-1.5">
             <h4 className="text-[11px] font-black text-orange-950 uppercase tracking-wider flex items-center gap-1.5">
@@ -310,10 +325,11 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
           <div className="pt-4 border-t border-slate-100 flex justify-end">
             <button
               onClick={handleSave}
+              disabled={saving}
               className="px-6 py-2.5 bg-[#EA580C] hover:bg-[#C2410C] text-white rounded-lg text-xs font-bold tracking-wider uppercase transition flex items-center gap-2 cursor-pointer shadow-md"
             >
               <Save className="w-4 h-4" />
-              Salvar Configurações
+              {saving ? 'Salvando...' : 'Salvar Configurações'}
             </button>
           </div>
         </div>

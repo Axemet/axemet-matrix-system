@@ -290,7 +290,7 @@ export default function QuoteSummary({
               className="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-xl transition shadow-md hover:shadow-lg flex items-center justify-center gap-2 cursor-pointer text-xs uppercase tracking-wider"
             >
               <FileDown className="w-4 h-4" />
-              Exportar Relatório PDF
+              Gerar proposta para o cliente (PDF)
             </button>
 
           </div>

@@ -1459,8 +1459,8 @@ export default function App() {
       totals,
       machiningTypes,
     };
-    generateBudgetPDF(draft);
-    showToast('Relatório PDF exportado com sucesso!');
+    void generateBudgetPDF(draft);
+    showToast('Proposta comercial do cliente gerada em PDF.');
   };
 
   if (!isLoggedIn || forceRecoveryScreen) {
@@ -2228,11 +2228,11 @@ export default function App() {
                           {/* Quick Export PDF */}
                           <button
                             onClick={() => {
-                              generateBudgetPDF(draft);
-                              showToast('Orçamento exportado em PDF com sucesso!', 'success');
+                              void generateBudgetPDF(draft);
+                              showToast('Proposta comercial gerada em PDF.', 'success');
                             }}
                             className="p-2 text-slate-500 hover:text-[#EA580C] hover:bg-orange-50 rounded-lg transition cursor-pointer"
-                            title="Exportar PDF do Orçamento"
+                            title="Gerar proposta comercial para o cliente"
                           >
                             <FileDown className="w-4 h-4" />
                           </button>
