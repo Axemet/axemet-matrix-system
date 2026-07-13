@@ -314,6 +314,21 @@ export function getMarginPercent(config: ConfigParams): number {
 }
 
 /**
+ * Single source of truth for a proposal's commercial value.
+ * A consolidated proposal is priced by its calculated technical items; a legacy
+ * one-item draft falls back to its technical price less the negotiated discount.
+ */
+export function getCommercialBudgetValue(budget: Pick<BudgetDraft, 'proposalItems' | 'totals' | 'discountValue'>): number {
+  const consolidated = (budget.proposalItems || []).reduce(
+    (sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0),
+    0,
+  );
+  return consolidated > 0
+    ? consolidated
+    : Math.max(0, (budget.totals?.finalPrice || 0) - (budget.discountValue || 0));
+}
+
+/**
  * Recalculates all totals based on the provided items and parameters.
  */
 export function calculateTotals(

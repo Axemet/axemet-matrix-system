@@ -6,6 +6,7 @@
 import { jsPDF } from 'jspdf';
 import { BudgetDraft } from '../types';
 import { getOrganizationProfile } from '../lib/organization';
+import { getCommercialBudgetValue } from './calculations';
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
@@ -125,8 +126,7 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   const commercialItems = draft.proposalItems && draft.proposalItems.length > 0
     ? draft.proposalItems
     : [{ id: 'default', description: product, quantity: 1, unitPrice: Math.max(0, draft.totals.finalPrice - (draft.discountValue || 0)) }];
-  const configuredTotal = commercialItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0), 0);
-  const negotiatedPrice = configuredTotal > 0 ? configuredTotal : Math.max(0, draft.totals.finalPrice - (draft.discountValue || 0));
+  const negotiatedPrice = getCommercialBudgetValue(draft);
   commercialItems.forEach((item, index) => {
     text(String(index + 1).padStart(2, '0'), left + 3, y, 8, { bold: true });
     text(truncate(item.description || product, 72), left + 22, y, 8, { bold: true });

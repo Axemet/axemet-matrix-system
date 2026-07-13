@@ -6,6 +6,7 @@
 import React from 'react';
 import { BudgetDraft } from '../types';
 import { formatCurrency } from '../utils/pdfGenerator';
+import { getCommercialBudgetValue } from '../utils/calculations';
 import { FolderOpen, Trash2, Calendar, FileText, ChevronRight, X } from 'lucide-react';
 
 interface BudgetListProps {
@@ -15,11 +16,6 @@ interface BudgetListProps {
   onLoadDraft: (draft: BudgetDraft) => void;
   onDeleteDraft: (id: string) => void;
 }
-
-const getCommercialBudgetValue = (draft: BudgetDraft) => {
-  const consolidated = (draft.proposalItems || []).reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
-  return consolidated > 0 ? consolidated : Math.max(0, (draft.totals?.finalPrice || 0) - (draft.discountValue || 0));
-};
 
 export default function BudgetList({
   isOpen,

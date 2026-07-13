@@ -1,5 +1,6 @@
 import React from 'react';
 import { MatrixProject, BOMItem, Subproject, Revision, BudgetDraft, ProjectDoc } from '../types';
+import { getCommercialBudgetValue } from '../utils/calculations';
 import { Plus, Trash2, FileText, Settings, Layers, Code, CheckCircle, AlertTriangle, GitCommit } from 'lucide-react';
 
 interface Modulo2Props {
@@ -153,7 +154,7 @@ export default function Modulo2Engenharia({
         }
       ],
       costs: {
-        orçado: budget.totals.finalPrice,
+        orçado: getCommercialBudgetValue(budget),
         real: 0,
         detalhado: {
           materials: budget.totals.materialsTotal,
