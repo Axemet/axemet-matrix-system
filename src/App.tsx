@@ -851,6 +851,11 @@ export default function App() {
         }
       }
 
+      // With Supabase, data can only be read after Auth restores and validates the
+      // user's active profile. Loading earlier returns an empty RLS-scoped list and
+      // made saved budgets appear to disappear after a new login.
+      if (isSupabaseConfigured && !isLoggedIn) return;
+
       if (isSupabaseConfigured) {
         try {
           showToast('Sincronizando com o Supabase...', 'info');
@@ -971,7 +976,7 @@ export default function App() {
     }
 
     loadInitialData();
-  }, []);
+  }, [isLoggedIn]);
 
   // Fetch profiles when Acessos tab is viewed
   React.useEffect(() => {
@@ -1355,7 +1360,11 @@ export default function App() {
     }
 
     try { await syncSaveBudget(newDraft); setDrafts(updatedDrafts); }
-    catch (e) { console.error('Erro ao salvar orçamento no Supabase:', e); showToast('O orçamento não foi salvo no banco.', 'error'); return; }
+    catch (e: any) {
+      console.error('Erro ao salvar orçamento no Supabase:', e);
+      showToast(e?.message ? `O orçamento não foi salvo: ${e.message}` : 'O orçamento não foi salvo no banco.', 'error');
+      return;
+    }
 
     if (isEditing) {
       showToast('Alterações salvas no orçamento existente com sucesso!', 'success');

@@ -377,10 +377,14 @@ export async function syncFetchBudgets(): Promise<BudgetDraft[]> {
 export async function syncSaveBudget(budget: BudgetDraft): Promise<void> {
   if (!isSupabaseConfigured) throw new Error('Supabase not configured');
   const dbBudget = mapBudgetToDbBudget(budget);
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('budgets')
-    .upsert(dbBudget);
+    .upsert(dbBudget, { onConflict: 'id' })
+    .select('id');
   if (error) throw error;
+  if (!data || data.length !== 1) {
+    throw new Error('O Supabase não confirmou a gravação do orçamento.');
+  }
 }
 
 export async function syncDeleteBudget(id: string): Promise<void> {
