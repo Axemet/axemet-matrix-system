@@ -1839,9 +1839,7 @@ export default function App() {
       <header className="md:hidden bg-[#0F2A43] border-b-2 border-[#C8A435] text-white sticky top-0 z-45 p-4 flex flex-col gap-3 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#2563A8] rounded-lg flex items-center justify-center font-black text-xs text-white border border-[#C8A435]">
-              MX
-            </div>
+            <img src="/axemet-system-logo.png" alt="Axemet System" className="w-8 h-8 rounded-lg object-cover border border-[#C8A435]" />
             <div>
               <span className="text-[8px] font-black tracking-widest text-[#C8A435] uppercase block leading-none">AXEMET SYSTEM</span>
               <span className="text-[10px] font-black text-slate-100 uppercase block leading-none">Gestão Industrial</span>

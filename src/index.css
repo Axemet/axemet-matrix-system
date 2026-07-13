@@ -139,7 +139,22 @@ body {
 .rh-primary:hover { background: #124a80; transform: translateY(-1px); }
 .rh-tabs::-webkit-scrollbar { display: none; }
 
+/* Axemet System — premium industrial entry experience */
+.ax-login { background: #eef3f7; }
+.ax-login-showcase { min-height: 100vh; background: radial-gradient(circle at 82% 18%, rgba(66, 153, 180, .27), transparent 33%), linear-gradient(145deg, #071526 0%, #0b2942 52%, #113f5a 100%); }
+.ax-login-grid { opacity: .5; background-image: linear-gradient(rgba(148, 201, 220, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 201, 220, .07) 1px, transparent 1px); background-size: 34px 34px; mask-image: linear-gradient(to bottom, black, transparent 88%); }
+.ax-login-kicker { width: fit-content; border: 1px solid rgba(213,173,74,.42); background: rgba(213,173,74,.08); border-radius: 999px; color: #e6c66d; font-size: 9px; font-weight: 800; letter-spacing: .16em; padding: 7px 10px; }
+.ax-login-showcase .space-y-4 > div { align-items: flex-start; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(4,16,30,.19); padding: 12px; }
+.ax-login-showcase .space-y-4 > div > div:first-child { flex: none; }
+.ax-login-showcase .space-y-4 > div > span { line-height: 1.45; }
+.ax-login-panel { background: linear-gradient(135deg, #f8fbfd 0%, #edf3f7 100%); }
+.ax-login-card { background: rgba(255,255,255,.93); border: 1px solid rgba(184,199,210,.6); border-radius: 24px; box-shadow: 0 24px 70px rgba(15,42,67,.13); padding: clamp(24px, 4vw, 40px); }
+.ax-login-card h2 { letter-spacing: -.035em; }
+.ax-login-card input { border-radius: 11px !important; min-height: 43px; }
+.ax-login-card form > button[type='submit'] { min-height: 48px; border-radius: 12px; background: linear-gradient(110deg, #103a61, #1c5d88) !important; }
+
 @media (max-width: 768px) {
   .axemet-main { padding: 18px 14px 88px; }
   .axemet-hero { min-height: auto; border-radius: 18px !important; }
 }
+@media (max-width: 1023px) { .ax-login-showcase { min-height: auto; } .ax-login-card { box-shadow: none; } }

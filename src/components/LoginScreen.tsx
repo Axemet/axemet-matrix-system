@@ -216,53 +216,55 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex flex-col md:flex-row font-sans">
+    <div className="ax-login min-h-screen flex flex-col lg:flex-row font-sans">
       
       {/* PAINEL ESQUERDO: Visual & Identidade (45% no desktop) */}
-      <div className="md:w-[45%] bg-gradient-to-br from-[#0F2A43] via-[#153454] to-[#1A3F6F] text-white p-8 md:p-12 lg:p-16 flex flex-col justify-between relative overflow-hidden shrink-0">
+      <div className="ax-login-showcase lg:w-[53%] text-white p-7 md:p-10 lg:p-14 flex flex-col justify-between relative overflow-hidden shrink-0">
         {/* Background decorative vector elements */}
-        <div className="absolute top-0 right-0 w-80 h-80 bg-[#C8A435]/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-12 left-12 w-64 h-64 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
+        <div className="ax-login-grid absolute inset-0 pointer-events-none" />
+        <div className="absolute -top-32 -right-24 w-96 h-96 bg-[#C8A435]/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-12 left-12 w-64 h-64 bg-cyan-400/10 rounded-full blur-2xl pointer-events-none" />
         
         {/* Top brand */}
         <div className="relative z-10 flex items-center gap-3">
-          <img src="/axemet-system-logo.png" alt="Axemet System" className="h-12 w-12 rounded-xl object-cover shadow-lg ring-1 ring-[#C8A435]/40" />
+          <img src="/axemet-system-logo.png" alt="Axemet System" className="h-12 w-12 rounded-xl object-cover shadow-2xl ring-1 ring-[#C8A435]/50" />
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-xs font-bold text-white uppercase mt-1 tracking-wider leading-none">
-              Matrizaria Core
+              Plataforma Industrial
             </span>
           </div>
         </div>
 
         {/* Center Title / Value Proposition */}
-        <div className="relative z-10 my-12 md:my-auto space-y-6">
-          <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white font-display leading-tight">
-            AXEMET SYSTEM
+        <div className="relative z-10 my-12 md:my-auto space-y-7 max-w-xl">
+          <div className="ax-login-kicker">MOLDES, MATRIZES E FERRAMENTARIA</div>
+          <h1 className="text-4xl lg:text-5xl font-black tracking-[-.04em] text-white font-display leading-[.96]">
+            A operação inteira.<br/><span className="text-[#d5ad4a]">Uma única visão.</span>
           </h1>
-          <p className="text-sm text-slate-300 font-normal leading-relaxed max-w-md">
-            Gestão Industrial de Precisão. Controle de forma integral e integrada, do contato comercial ao pós-entrega do seu molde.
+          <p className="text-sm text-slate-300 font-normal leading-relaxed max-w-lg">
+            Da proposta ao try-out, o Axemet System conecta engenharia, chão de fábrica, suprimentos e gestão em uma operação rastreável.
           </p>
 
           {/* Benefits/Features List */}
-          <div className="space-y-4 pt-4 text-xs font-medium text-slate-200">
+          <div className="grid sm:grid-cols-3 gap-3 pt-3 text-xs font-medium text-slate-200">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-[#C8A435]">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <span>Controle total do orçamento à produção</span>
+              <span>Comercial para fabricação sem ruptura</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <span>Visibilidade e apontamentos em tempo real</span>
+              <span>Pessoas, máquinas e operações conectadas</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-sky-400">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
-              <span>Rastreabilidade, controle de custos e NCs</span>
+              <span>Gestão por indicadores e permissões</span>
             </div>
           </div>
         </div>
@@ -275,8 +277,8 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       </div>
 
       {/* PAINEL DIREITO: Formulário de Acesso (55% no desktop) */}
-      <div className="flex-1 bg-white p-8 md:p-12 lg:p-16 flex items-center justify-center">
-        <div className="w-full max-w-md space-y-8 animate-fadeIn">
+      <div className="ax-login-panel flex-1 p-6 md:p-10 lg:p-14 flex items-center justify-center">
+        <div className="ax-login-card w-full max-w-md space-y-8 animate-fadeIn">
           
           {/* FORGOT PASSWORD SCREEN */}
           {isForgotPassword ? (
