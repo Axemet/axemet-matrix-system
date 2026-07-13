@@ -87,48 +87,23 @@ export async function fetchProfiles() {
 }
 
 export async function updateProfile(id: string, updates: any) {
-  if (!isSupabaseConfigured) return null;
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .upsert({
-        id,
-        ...updates,
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .maybeSingle();
-    if (error) throw error;
-    return data;
-  } catch (err: any) {
-    console.warn('Erro ao atualizar perfil com colunas estendidas, tentando apenas colunas padrão:', err.message || err);
-    
-    const safeUpdates: any = {};
-    if (updates.email !== undefined) safeUpdates.email = updates.email;
-    if (updates.full_name !== undefined) safeUpdates.full_name = updates.full_name;
-    if (updates.role !== undefined) safeUpdates.role = updates.role;
-    if (updates.status !== undefined) safeUpdates.status = updates.status;
-    if (updates.organization !== undefined) safeUpdates.organization = updates.organization;
-    if (updates.sector !== undefined) safeUpdates.sector = updates.sector;
-    if (updates.permissions !== undefined) safeUpdates.permissions = updates.permissions;
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .upsert({
-          id,
-          ...safeUpdates,
-          updated_at: new Date().toISOString()
-        })
-        .select()
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    } catch (fallbackErr: any) {
-      console.warn('Erro persistente ao atualizar perfil no fallback:', fallbackErr.message || fallbackErr);
-      throw fallbackErr;
-    }
-  }
+  if (!isSupabaseConfigured) throw new Error('Supabase não está configurado.');
+
+  // A profile is created only by the Auth trigger. Using upsert here asks RLS for
+  // INSERT permission as well and consequently blocks an otherwise authorized edit.
+  const allowed = ['full_name', 'role', 'status', 'organization', 'sector', 'permissions'];
+  const payload = Object.fromEntries(
+    Object.entries(updates).filter(([key]) => allowed.includes(key))
+  );
+
+  const { data, error } = await supabase
+    .from('profiles')
+    .update({ ...payload, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
 // --- TYPE MAPPERS ---

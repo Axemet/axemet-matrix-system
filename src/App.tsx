@@ -984,21 +984,22 @@ export default function App() {
   };
 
   const handleUpdateProfile = async (profileId: string, updates: Partial<UserProfile>) => {
-    setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, ...updates } : p));
     showToast('Atualizando permissões...', 'info');
-    if (isSupabaseConfigured) {
-      try {
-        await updateProfile(profileId, updates);
-        showToast('Perfil atualizado com sucesso!', 'success');
-      } catch (err) {
-        console.error('Erro ao atualizar perfil no Supabase:', err);
-        showToast('Erro ao salvar alteração. Tente novamente.', 'error');
-        // Reload list
-        const profs = await fetchProfiles();
-        if (profs) setProfilesList(profs);
-      }
-    } else {
-      showToast('Simulação: Perfil atualizado com sucesso!', 'success');
+    if (!isSupabaseConfigured) {
+      showToast('Não é possível alterar acessos sem conexão com o Supabase.', 'error');
+      return false;
+    }
+    try {
+      const saved = await updateProfile(profileId, updates);
+      setProfilesList(prev => prev.map(p => p.id === profileId ? { ...p, ...saved } : p));
+      showToast('Perfil atualizado com sucesso!', 'success');
+      return true;
+    } catch (err) {
+      console.error('Erro ao atualizar perfil no Supabase:', err);
+      showToast('A alteração não foi salva. Verifique as permissões do administrador e tente novamente.', 'error');
+      const profs = await fetchProfiles();
+      setProfilesList(profs);
+      return false;
     }
   };
 
@@ -3327,8 +3328,10 @@ export default function App() {
                           value={formEmail}
                           onChange={(e) => setFormEmail(e.target.value)}
                           placeholder="Ex: joao@empresa.com"
-                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none"
+                          disabled={!!selectedProfileForEdit}
+                          className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                         />
+                        {selectedProfileForEdit && <p className="text-[9px] leading-snug text-slate-400">O e-mail de login é administrado pelo Supabase e não pode ser alterado nesta tela.</p>}
                       </div>
                       <div className="space-y-1.5">
                         <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Setor Primário</label>
@@ -3498,7 +3501,7 @@ export default function App() {
                       Cancelar
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         if (!formName.trim() || !formEmail.trim()) {
                           showToast('Por favor, preencha o nome e o e-mail corporativo!', 'error');
                           return;
@@ -3517,12 +3520,13 @@ export default function App() {
                             permissions: normalizePermissions(formPermissions),
                             updated_at: new Date().toISOString()
                           };
-                          handleUpdateProfile(selectedProfileForEdit.id, updatedProfile);
+                          const saved = await handleUpdateProfile(selectedProfileForEdit.id, updatedProfile);
+                          if (saved) setIsUserFormOpen(false);
                         } else {
                           // Auth accounts must be created through the Supabase invitation/sign-up flow.
                           showToast('A conta deve ser criada pelo próprio usuário via cadastro. Após isso, ela aparecerá aqui para aprovação e permissões.', 'info');
+                          setIsUserFormOpen(false);
                         }
-                        setIsUserFormOpen(false);
                       }}
                       className="px-5 py-2 bg-[#2563A8] hover:bg-[#1A3F6F] text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md uppercase tracking-wider"
                     >

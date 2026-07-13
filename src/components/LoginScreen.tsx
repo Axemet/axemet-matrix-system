@@ -41,7 +41,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
   const [isLoading, setIsLoading] = React.useState(false);
 
   // Recovery flows
-  const [recoveryView, setRecoveryView] = React.useState<'input_email' | 'enter_code' | 'success_reset'>('input_email');
+  const [recoveryView, setRecoveryView] = React.useState<'input_email' | 'email_sent' | 'enter_code' | 'success_reset'>('input_email');
   const [recoveryEmail, setRecoveryEmail] = React.useState('');
   const [recoveryCode, setRecoveryCode] = React.useState('');
   const [generatedCode, setGeneratedCode] = React.useState('');
@@ -57,6 +57,27 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       const savedUser = localStorage.getItem('mm_saved_username') || '';
       if (savedUser) setUsernameOrEmail(savedUser);
     }
+  }, []);
+
+  // Supabase exchanges the secure e-mail link for a recovery session. The user
+  // must never type a fabricated code; the link itself is the verification.
+  React.useEffect(() => {
+    if (!isSupabaseConfigured) return;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const isRecoveryLink = hash.get('type') === 'recovery' || (new URLSearchParams(window.location.search).get('recovery') === '1' && !!hash.get('access_token'));
+    if (isRecoveryLink) {
+      setIsForgotPassword(true);
+      setRecoveryView('enter_code');
+    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setIsForgotPassword(true);
+        setRecoveryView('enter_code');
+        setError(null);
+        setSuccess(null);
+      }
+    });
+    return () => subscription.unsubscribe();
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -159,12 +180,12 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
       // If it's a Supabase email and configured, send real request
       if (emailOrUser.includes('@') && isSupabaseConfigured) {
         const { error: resetErr } = await supabase.auth.resetPasswordForEmail(emailOrUser, {
-          redirectTo: `${window.location.origin}`,
+          redirectTo: `${window.location.origin}/?recovery=1`,
         });
         if (resetErr) throw resetErr;
 
-        setSuccess(`Instruções de redefinição de senha enviadas para ${emailOrUser}. Verifique sua caixa de entrada.`);
-        setRecoveryView('enter_code');
+        setSuccess(`Enviamos um link seguro para ${emailOrUser}. Abra esse link no mesmo navegador para definir a nova senha.`);
+        setRecoveryView('email_sent');
       } else setError('A recuperação de senha exige o Supabase configurado e um e-mail corporativo.');
     } catch (err: any) {
       setError(err.message || 'Erro ao enviar solicitação de recuperação.');
@@ -179,11 +200,6 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setError(null);
     setSuccess(null);
 
-    if (!recoveryCode.trim()) {
-      setError('Por favor, insira o código de verificação recebido.');
-      return;
-    }
-
     if (newPassword.length < 5) {
       setError('A nova senha deve possuir pelo menos 5 caracteres.');
       return;
@@ -197,10 +213,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setIsLoading(true);
 
     try {
-      const emailOrUser = recoveryEmail.trim().toLowerCase();
-
-      if (emailOrUser.includes('@') && isSupabaseConfigured) {
-        // For real Supabase, user should use the email link or code. Here we simulate code update.
+      if (isSupabaseConfigured) {
         const { error: updateErr } = await supabase.auth.updateUser({
           password: newPassword,
         });
@@ -355,33 +368,22 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
                 </form>
               )}
 
-              {/* WIZARD VIEW 2: Enter code & New password */}
+              {recoveryView === 'email_sent' && (
+                <div className="space-y-5 rounded-xl border border-sky-100 bg-sky-50/60 p-5 text-center">
+                  <Mail className="mx-auto h-8 w-8 text-[#1A3F6F]" />
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800">Link de recuperação enviado</h3>
+                    <p className="mt-2 text-xs leading-relaxed text-slate-600">Abra o link recebido por e-mail. Ele valida sua identidade e trará você de volta a esta tela para escolher uma nova senha.</p>
+                  </div>
+                  <button type="button" onClick={() => setRecoveryView('input_email')} className="text-xs font-bold text-[#1A3F6F] hover:underline">Enviar novamente</button>
+                </div>
+              )}
+
+              {/* WIZARD VIEW 2: secure e-mail link accepted, choose a new password */}
               {recoveryView === 'enter_code' && (
                 <form onSubmit={handleResetPasswordSubmit} className="space-y-4">
                   <div className="space-y-1.5 bg-amber-50/50 border border-amber-200/50 p-3 rounded-lg text-[11px] text-amber-800 font-semibold">
-                    🔑 Insira o código corporativo enviado para validar que é você.
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="block text-[10px] font-black text-slate-500 uppercase tracking-widest">
-                      Código de Verificação
-                    </label>
-                    <div className="relative">
-                      <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                        <Key className="w-4 h-4" />
-                      </span>
-                      <input
-                        type="text"
-                        value={recoveryCode}
-                        onChange={(e) => {
-                          setRecoveryCode(e.target.value);
-                          setError(null);
-                        }}
-                        placeholder="Ex: MX-1234"
-                        className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-black text-[#1A3F6F] placeholder-slate-400 focus:ring-1 focus:ring-[#1A3F6F] outline-none tracking-widest uppercase transition"
-                        required
-                      />
-                    </div>
+                    Link seguro validado. Defina sua nova senha corporativa.
                   </div>
 
                   <div className="space-y-1.5">
