@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, RawMaterial, InternalServiceItem, MachiningType, BudgetDraft } from '../types';
+import { Client, RawMaterial, InternalServiceItem, MachiningType, BudgetDraft, StandardComponentStock } from '../types';
 
 // @ts-ignore
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
@@ -363,7 +363,52 @@ export async function syncSaveMachiningTypes(types: MachiningType[]): Promise<vo
   if (error) throw error;
 }
 
-// 5. Budgets (Drafts)
+// 5. Standard components catalog
+export async function syncFetchStandardComponents(): Promise<StandardComponentStock[]> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { data, error } = await supabase
+    .from('standard_components')
+    .select('*')
+    .order('name', { ascending: true });
+  if (error) throw error;
+  return (data || []).map((component: any) => ({
+    id: component.id,
+    catalog: component.catalog as StandardComponentStock['catalog'],
+    code: component.code,
+    name: component.name,
+    stock: Number(component.stock || 0),
+    minStock: Number(component.min_stock || 0),
+    price: Number(component.price || 0),
+  }));
+}
+
+export async function syncSaveStandardComponents(components: StandardComponentStock[]): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+
+  const { data: existing, error: readError } = await supabase.from('standard_components').select('id');
+  if (readError) throw readError;
+  const activeIds = new Set(components.map(component => component.id));
+  const removedIds = (existing || []).map((row: any) => row.id).filter((id: string) => !activeIds.has(id));
+  if (removedIds.length) {
+    const { error } = await supabase.from('standard_components').delete().in('id', removedIds);
+    if (error) throw error;
+  }
+  if (!components.length) return;
+
+  const payload = components.map(component => ({
+    id: component.id,
+    catalog: component.catalog,
+    code: component.code,
+    name: component.name,
+    stock: component.stock,
+    min_stock: component.minStock,
+    price: component.price,
+  }));
+  const { error } = await supabase.from('standard_components').upsert(payload, { onConflict: 'id' });
+  if (error) throw error;
+}
+
+// 6. Budgets (Drafts)
 export async function syncFetchBudgets(): Promise<BudgetDraft[]> {
   if (!isSupabaseConfigured) throw new Error('Supabase not configured');
   const { data, error } = await supabase

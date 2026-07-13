@@ -52,6 +52,8 @@ import {
   syncSaveServices,
   syncFetchMachiningTypes,
   syncSaveMachiningTypes,
+  syncFetchStandardComponents,
+  syncSaveStandardComponents,
   syncFetchBudgets,
   syncSaveBudget,
   syncDeleteBudget,
@@ -869,13 +871,14 @@ export default function App() {
             return [];
           };
 
-          const [dbClients, dbMaterials, dbMachiningTypes, dbServices, dbBudgets, dbConfig] = await Promise.all([
+          const [dbClients, dbMaterials, dbMachiningTypes, dbServices, dbBudgets, dbConfig, dbStandardComponents] = await Promise.all([
             syncFetchClients().catch((err) => handleFetchError('Clients', err)),
             syncFetchMaterials().catch((err) => handleFetchError('Materials', err)),
             syncFetchMachiningTypes().catch((err) => handleFetchError('Machining types', err)),
             syncFetchServices().catch((err) => handleFetchError('Services', err)),
             syncFetchBudgets().catch((err) => handleFetchError('Budgets', err)),
             loadOrganizationSettings().catch((err) => handleFetchError('Organization settings', err)),
+            syncFetchStandardComponents().catch((err) => handleFetchError('Standard components', err)),
           ]);
 
           if (schemaMissing) {
@@ -898,6 +901,7 @@ export default function App() {
           }
 
           setDrafts(dbBudgets);
+          setErpStdStock(dbStandardComponents);
 
           const nextRef = generateNextReference(dbBudgets);
           setReference(nextRef);
@@ -3724,7 +3728,14 @@ export default function App() {
         onSaveRawMaterials={handleSaveRawMaterials}
         machiningTypes={machiningTypes}
         standardComponents={erpStdStock}
-        onSaveStandardComponents={setErpStdStock}
+        onSaveStandardComponents={(components) => {
+          setErpStdStock(components);
+          if (isSupabaseConfigured) {
+            syncSaveStandardComponents(components)
+              .then(() => showToast('Catálogo de componentes salvo no Supabase.', 'success'))
+              .catch((error) => showToast(error?.message || 'Não foi possível salvar o catálogo de componentes.', 'error'));
+          }
+        }}
         onSaveMachiningTypes={(types) => {
           setMachiningTypes(types);
           localStorage.setItem('orcamolde_machining_types', JSON.stringify(types));

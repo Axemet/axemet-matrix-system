@@ -1,10 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Manrope:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700;6..72,800&family=Sora:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Manrope", sans-serif;
-  --font-heading: "Manrope", sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Sora", ui-sans-serif, sans-serif;
+  --font-heading: "Sora", ui-sans-serif, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
@@ -33,12 +33,17 @@
 html { background: var(--ax-surface); }
 body {
   min-width: 320px;
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
   background:
     radial-gradient(circle at 82% -10%, rgba(79, 136, 195, .12), transparent 27rem),
     radial-gradient(circle at 10% 0%, rgba(213, 173, 74, .07), transparent 22rem),
     var(--ax-surface);
   color: var(--ax-ink);
 }
+
+h1, h2, h3, h4, h5, h6 { font-family: "Sora", ui-sans-serif, sans-serif; letter-spacing: -.018em; }
 
 ::selection { background: rgba(213, 173, 74, .32); color: var(--ax-navy); }
 * { scrollbar-width: thin; scrollbar-color: #91a5b9 transparent; }
@@ -199,3 +204,24 @@ body {
   .axemet-hero { min-height: auto; border-radius: 18px !important; }
 }
 @media (max-width: 1023px) { .ax-login-showcase { min-height: auto; } .ax-login-card { box-shadow: none; } }
+
+/* Unified controls and compact navigation — shared across the industrial modules. */
+.axemet-main label { line-height: 1.35; }
+.axemet-main input:not([type='checkbox']):not([type='radio']),
+.axemet-main select {
+  min-height: 40px;
+  font-size: .875rem !important;
+  line-height: 1.25rem;
+}
+.axemet-main textarea { font-size: .875rem !important; line-height: 1.45; }
+.axemet-main input::placeholder,
+.axemet-main textarea::placeholder { color: #94a3b8; opacity: 1; }
+.axemet-main .text-xs { font-size: .78rem; }
+.axemet-main .text-\[10px\] { font-size: .68rem; }
+.axemet-sidebar { width: 16.75rem !important; }
+.axemet-sidebar .space-y-4 { gap: 8px !important; }
+.axemet-sidebar .space-y-1 { gap: 2px !important; }
+.axemet-sidebar button { min-height: 34px; padding-top: .42rem; padding-bottom: .42rem; font-size: .78rem; }
+.axemet-sidebar span[class*='tracking-widest'] { margin-top: 6px; margin-bottom: 2px !important; font-size: .56rem; }
+.axemet-sidebar .axemet-org { margin-top: 6px; margin-bottom: 2px; }
+@media (min-width: 1280px) { .axemet-sidebar { width: 17.25rem !important; } }

@@ -45,9 +45,11 @@ export default function ThirdPartyTable({
   const handleSelectCatalogComponent = (componentId: string) => {
     const component = standardComponents.find(current => current.id === componentId);
     if (!component) return;
-    setNewDesc(`${component.name}${component.code ? ` (${component.code})` : ''}`);
-    setNewPrice(component.price || 0);
-    setNewQtd(1);
+    onAddItem({
+      description: `${component.name}${component.code ? ` (${component.code})` : ''}`,
+      qtd: 1,
+      valUnit: component.price || 0,
+    });
   };
 
   return (
@@ -258,21 +260,21 @@ export default function ThirdPartyTable({
             <form onSubmit={handleAddNew} className="space-y-4">
               <div>
                 <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
-                  Puxar do catálogo de componentes
+                  Adicionar componente do catálogo
                 </label>
                 <select
                   value=""
                   onChange={(e) => handleSelectCatalogComponent(e.target.value)}
                   className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-xs text-gray-800 bg-indigo-50/40"
                 >
-                  <option value="">Selecione para preencher descrição e preço</option>
+                  <option value="">Selecione para inserir automaticamente</option>
                   {standardComponents.map(component => (
-                    <option key={component.id} value={component.id} disabled={component.stock <= 0}>
-                      {component.catalog} · {component.code} — {component.name}{component.stock <= 0 ? ' (sem estoque)' : ''}
+                    <option key={component.id} value={component.id}>
+                      {component.catalog} · {component.code} — {component.name} · {component.stock} em estoque
                     </option>
                   ))}
                 </select>
-                {standardComponents.length === 0 && <p className="mt-1 text-[10px] text-amber-700">Cadastre componentes em Parâmetros para utilizar o preenchimento automático.</p>}
+                {standardComponents.length === 0 ? <p className="mt-1 text-[10px] text-amber-700">Cadastre componentes em Parâmetros para utilizar o preenchimento automático.</p> : <p className="mt-1 text-[10px] text-emerald-700">Ao selecionar, o componente entra na lista com a descrição e o preço do catálogo. A quantidade e o preço continuam editáveis no orçamento.</p>}
               </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
