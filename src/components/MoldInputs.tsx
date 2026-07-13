@@ -278,12 +278,12 @@ export default function MoldInputs({
         <div className="md:col-span-5">
           <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
             <FileText className="w-3.5 h-3.5 text-gray-400" />
-            Nome / Descrição do Molde
+            Título do Ferramental
           </label>
           <input
             type="text"
             required
-            placeholder="Ex: Molde Gaveta Copo 300ml - 2 Cavidades"
+              placeholder="Ex: Conjunto Delta Frio – Linha 01"
             value={moldDescription}
             onChange={(e) => onMoldDescriptionChange(e.target.value)}
             className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-950 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 bg-white"
@@ -363,7 +363,7 @@ export default function MoldInputs({
           <div className="md:col-span-2">
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
               <Hash className="w-3.5 h-3.5 text-gray-400" />
-              Quantidade (Peças)
+              Número de Cavidades
             </label>
             <input
               type="number"

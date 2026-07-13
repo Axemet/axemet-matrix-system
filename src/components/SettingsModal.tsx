@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { ConfigParams, InternalServiceItem, RawMaterial, MachiningType } from '../types';
+import { ConfigParams, InternalServiceItem, RawMaterial, MachiningType, StandardComponentStock } from '../types';
 import { Settings, RefreshCw, Check, X, Plus, Trash2, HelpCircle } from 'lucide-react';
 import { getMarginPercent } from '../utils/calculations';
 import { DEFAULT_CONFIG, DEFAULT_RAW_MATERIALS, DEFAULT_INTERNAL_SERVICES } from '../constants';
@@ -21,6 +21,8 @@ interface SettingsModalProps {
   onSaveRawMaterials: (materials: RawMaterial[]) => void;
   machiningTypes: MachiningType[];
   onSaveMachiningTypes: (types: MachiningType[]) => void;
+  standardComponents: StandardComponentStock[];
+  onSaveStandardComponents: (components: StandardComponentStock[]) => void;
 }
 
 export default function SettingsModal({
@@ -35,11 +37,14 @@ export default function SettingsModal({
   onSaveRawMaterials,
   machiningTypes,
   onSaveMachiningTypes,
+  standardComponents,
+  onSaveStandardComponents,
 }: SettingsModalProps) {
   const [localConfig, setLocalConfig] = React.useState<ConfigParams>({ ...config });
   const [localRates, setLocalRates] = React.useState<InternalServiceItem[]>([]);
   const [localRawMaterials, setLocalRawMaterials] = React.useState<RawMaterial[]>([]);
   const [localMachiningTypes, setLocalMachiningTypes] = React.useState<MachiningType[]>([]);
+  const [localStandardComponents, setLocalStandardComponents] = React.useState<StandardComponentStock[]>([]);
 
   // States for adding a new raw material
   const [newMatName, setNewMatName] = React.useState('');
@@ -54,6 +59,7 @@ export default function SettingsModal({
   const [newSrvName, setNewSrvName] = React.useState('');
   const [newSrvUnit, setNewSrvUnit] = React.useState<'h' | 'dia'>('h');
   const [newSrvRate, setNewSrvRate] = React.useState(0);
+  const [newComponent, setNewComponent] = React.useState({ catalog: 'Outro' as StandardComponentStock['catalog'], code: '', name: '', stock: 0, minStock: 0, price: 0 });
 
   React.useEffect(() => {
     setLocalConfig({ ...config });
@@ -70,6 +76,10 @@ export default function SettingsModal({
   React.useEffect(() => {
     setLocalMachiningTypes(machiningTypes.map(mt => ({ ...mt })));
   }, [machiningTypes, isOpen]);
+
+  React.useEffect(() => {
+    setLocalStandardComponents(standardComponents.map(component => ({ ...component })));
+  }, [standardComponents, isOpen]);
 
   if (!isOpen) return null;
 
@@ -167,6 +177,17 @@ export default function SettingsModal({
     setLocalRates((prev) => prev.filter((r) => r.id !== id));
   };
 
+  const handleAddStandardComponent = (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!newComponent.name.trim() || !newComponent.code.trim()) return;
+    setLocalStandardComponents(previous => [...previous, { id: `std_component_${Date.now()}`, ...newComponent, code: newComponent.code.trim(), name: newComponent.name.trim() }]);
+    setNewComponent({ catalog: 'Outro', code: '', name: '', stock: 0, minStock: 0, price: 0 });
+  };
+
+  const updateStandardComponent = (id: string, patch: Partial<StandardComponentStock>) => {
+    setLocalStandardComponents(previous => previous.map(component => component.id === id ? { ...component, ...patch } : component));
+  };
+
   const handleSaveAll = () => {
     // Also sync standard prices from rawMaterials to config if names match
     const p20Mat = localRawMaterials.find(m => m.name.toLowerCase() === 'aço p20' || m.name.toLowerCase() === 'p20');
@@ -185,6 +206,7 @@ export default function SettingsModal({
     onSaveServiceRates(localRates);
     onSaveRawMaterials(localRawMaterials);
     onSaveMachiningTypes(localMachiningTypes);
+    onSaveStandardComponents(localStandardComponents);
     onClose();
   };
 
@@ -557,6 +579,16 @@ export default function SettingsModal({
                 </div>
               </div>
             </form>
+          </div>
+
+          {/* Catálogo de componentes normalizados */}
+          <div className="border-t border-gray-100 pt-6">
+            <div className="border-b border-gray-100 pb-2 mb-4"><h3 className="text-sm font-semibold text-gray-900">Catálogo de Componentes Normalizados</h3><p className="mt-1 text-[11px] text-gray-500">Cadastre os componentes para preenchê-los automaticamente na aba Componentes do orçamento. O preço e a descrição são puxados do catálogo e continuam rastreáveis.</p></div>
+            <div className="space-y-2 mb-4">
+              {localStandardComponents.length === 0 ? <div className="py-5 text-center text-gray-400 italic bg-gray-50 rounded-lg border border-dashed border-gray-200 text-xs">Nenhum componente normalizado cadastrado.</div> : localStandardComponents.map(component => <div key={component.id} className="grid grid-cols-[90px_1fr_72px_72px_90px_32px] items-center gap-2 rounded-lg border border-gray-150 bg-gray-50/50 p-2 text-xs"><select value={component.catalog} onChange={e => updateStandardComponent(component.id, { catalog: e.target.value as StandardComponentStock['catalog'] })} className="rounded border border-gray-200 bg-white p-1.5"><option>Hasco</option><option>DME</option><option>Meusburger</option><option>Polimold</option><option>Outro</option></select><div className="min-w-0"><input value={component.code} onChange={e => updateStandardComponent(component.id, { code: e.target.value })} placeholder="Código" className="mb-1 w-full rounded border border-gray-200 bg-white px-2 py-1" /><input value={component.name} onChange={e => updateStandardComponent(component.id, { name: e.target.value })} placeholder="Nome" className="w-full rounded border border-gray-200 bg-white px-2 py-1" /></div><input type="number" min="0" value={component.stock} onChange={e => updateStandardComponent(component.id, { stock: Number(e.target.value) || 0 })} title="Estoque" className="rounded border border-gray-200 bg-white px-2 py-1 text-center" /><input type="number" min="0" value={component.minStock} onChange={e => updateStandardComponent(component.id, { minStock: Number(e.target.value) || 0 })} title="Estoque mínimo" className="rounded border border-gray-200 bg-white px-2 py-1 text-center" /><input type="number" min="0" step="0.01" value={component.price} onChange={e => updateStandardComponent(component.id, { price: Number(e.target.value) || 0 })} title="Preço unitário" className="rounded border border-gray-200 bg-white px-2 py-1 text-right" /><button type="button" onClick={() => setLocalStandardComponents(previous => previous.filter(current => current.id !== component.id))} className="p-1.5 text-gray-400 hover:text-red-600" title="Excluir componente"><Trash2 className="w-3.5 h-3.5" /></button></div>)}
+            </div>
+            <form onSubmit={handleAddStandardComponent} className="grid grid-cols-1 sm:grid-cols-[100px_110px_1fr_80px_80px_100px_auto] gap-2 rounded-lg border border-indigo-100 bg-indigo-50/50 p-3"><select value={newComponent.catalog} onChange={e => setNewComponent(current => ({ ...current, catalog: e.target.value as StandardComponentStock['catalog'] }))} className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs"><option>Hasco</option><option>DME</option><option>Meusburger</option><option>Polimold</option><option>Outro</option></select><input required value={newComponent.code} onChange={e => setNewComponent(current => ({ ...current, code: e.target.value }))} placeholder="Código" className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs" /><input required value={newComponent.name} onChange={e => setNewComponent(current => ({ ...current, name: e.target.value }))} placeholder="Nome do componente" className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs" /><input type="number" min="0" value={newComponent.stock || ''} onChange={e => setNewComponent(current => ({ ...current, stock: Number(e.target.value) || 0 }))} placeholder="Estoque" className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs" /><input type="number" min="0" value={newComponent.minStock || ''} onChange={e => setNewComponent(current => ({ ...current, minStock: Number(e.target.value) || 0 }))} placeholder="Mín." className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs" /><input type="number" min="0" step="0.01" value={newComponent.price || ''} onChange={e => setNewComponent(current => ({ ...current, price: Number(e.target.value) || 0 }))} placeholder="R$ unit." className="rounded border border-indigo-200 bg-white px-2 py-1.5 text-xs" /><button type="submit" className="inline-flex items-center justify-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white"><Plus className="w-3.5 h-3.5" />Adicionar</button></form>
+            <div className="mt-2 grid grid-cols-3 gap-2 text-[9px] font-bold uppercase tracking-wide text-gray-400"><span>Estoque</span><span>Estoque mínimo</span><span>Preço unitário</span></div>
           </div>
 
           {/* Tipos de Usinagem (Alimentadores) */}

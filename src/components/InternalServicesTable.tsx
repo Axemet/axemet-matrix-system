@@ -6,7 +6,7 @@
 import React from 'react';
 import { InternalServiceItem, MachiningType } from '../types';
 import { formatCurrency } from '../utils/pdfGenerator';
-import { Briefcase, HelpCircle, Link } from 'lucide-react';
+import { Briefcase, HelpCircle, Link, Trash2 } from 'lucide-react';
 
 interface InternalServicesTableProps {
   services: InternalServiceItem[];
@@ -20,6 +20,7 @@ interface InternalServicesTableProps {
 export default function InternalServicesTable({
   services,
   onUpdateService,
+  onDeleteService,
   servicesTotal,
   machiningTypes = [],
 }: InternalServicesTableProps) {
@@ -77,6 +78,7 @@ export default function InternalServicesTable({
                     Automático
                   </span>
                 )}
+                {!isSyncedAuto && <button type="button" onClick={() => onDeleteService(s.id)} className="p-1 text-rose-600 hover:bg-rose-50 rounded" title="Remover deste orçamento"><Trash2 className="w-3.5 h-3.5" /></button>}
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -132,6 +134,7 @@ export default function InternalServicesTable({
                   <th className="py-3 px-4 w-32 text-center">Quantidade</th>
                   <th className="py-3 px-4 w-36 text-right">Taxa / Preço Unitário</th>
                   <th className="py-3 px-4 w-36 text-right">Custo Total (R$)</th>
+                  <th className="py-3 px-3 w-12 text-center">Ação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 text-xs text-gray-900 bg-white">
@@ -199,6 +202,9 @@ export default function InternalServicesTable({
                       {/* Total */}
                       <td className="py-3 px-4 text-right font-mono font-extrabold text-gray-950 font-black">
                         {formatCurrency(s.total)}
+                      </td>
+                      <td className="py-3 px-3 text-center">
+                        {!isSyncedAuto && <button type="button" onClick={() => onDeleteService(s.id)} className="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg" title="Remover deste orçamento"><Trash2 className="w-4 h-4" /></button>}
                       </td>
                     </tr>
                   );

@@ -596,6 +596,7 @@ export default function App() {
   const [selectedProfileForEdit, setSelectedProfileForEdit] = React.useState<any | null>(null);
   const [formName, setFormName] = React.useState('');
   const [formEmail, setFormEmail] = React.useState('');
+  const [formPhone, setFormPhone] = React.useState('');
   const [formRole, setFormRole] = React.useState<'admin' | 'manager' | 'operator' | 'viewer'>('viewer');
   const [formStatus, setFormStatus] = React.useState<'active' | 'pending' | 'inactive'>('pending');
   const [formSector, setFormSector] = React.useState('');
@@ -700,7 +701,7 @@ export default function App() {
   }, []);
 
   // Active Tab state inside editor
-  const [activeTab, setActiveTab] = React.useState<'dados' | 'materiais' | 'tempos' | 'terceiros' | 'servicos' | 'resumo' | 'clientes'>('dados');
+  const [activeTab, setActiveTab] = React.useState<'dados' | 'materiais' | 'tempos' | 'terceiros' | 'servicos' | 'resumo'>('dados');
 
   // Client registry list
   const [clients, setClients] = React.useState<Client[]>([]);
@@ -1101,10 +1102,11 @@ export default function App() {
     }
     setProposalItems(previous => [...previous, {
       id: `proposal_technical_${Date.now()}`,
-      description: moldDescription.trim(),
+      title: moldDescription.trim(),
+      description: moldType.trim() || 'Ferramental sob encomenda',
       quantity: 1,
       unitPrice: calculatedPrice,
-      sourceTechnicalReference: `${reference || 'Sem referência'} · ${moldType || 'Orçamento técnico'}`,
+      sourceTechnicalReference: reference || 'Sem referência',
     }]);
     showToast(`Cálculo técnico de “${moldDescription.trim()}” incorporado à proposta consolidada.`, 'success');
   };
@@ -1339,6 +1341,7 @@ export default function App() {
       proposalItems,
       commercialTerms,
       representativeName: userProfile?.full_name || currentUser?.email || '',
+      representativePhone: userProfile?.phone || currentUser?.phone || '',
       representativeEmail: currentUser?.email || '',
       totals,
       machiningTypes,
@@ -1527,6 +1530,7 @@ export default function App() {
       proposalItems,
       commercialTerms,
       representativeName: userProfile?.full_name || currentUser?.email || '',
+      representativePhone: userProfile?.phone || currentUser?.phone || '',
       representativeEmail: currentUser?.email || '',
       totals,
       machiningTypes,
@@ -1959,13 +1963,6 @@ export default function App() {
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-[#1A3F6F] space-y-2 bg-[#0B1E30] text-[11px] font-bold">
           <button
-            onClick={() => setIsSettingsOpen(true)}
-            className="w-full text-left px-3 py-2 text-slate-300 hover:text-white hover:bg-[#1A3F6F]/40 rounded-lg transition flex items-center gap-2 cursor-pointer"
-          >
-            <Settings className="w-4 h-4 text-slate-400" />
-            Parâmetros do Sistema
-          </button>
-          <button
             onClick={handleLogout}
             className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg transition flex items-center gap-2 cursor-pointer"
           >
@@ -1986,13 +1983,6 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsSettingsOpen(true)}
-              className="p-1.5 text-slate-300 hover:text-white bg-[#1A3F6F] rounded-lg transition border border-[#2563A8]"
-              title="Ajustar Parâmetros"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
             <button
               onClick={handleLogout}
               className="p-1.5 text-red-400 hover:text-red-300 bg-red-950/20 rounded-lg transition border border-red-900/30"
@@ -2446,6 +2436,14 @@ export default function App() {
                   Salvar
                 </button>
                 <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 text-slate-700 hover:bg-slate-50 rounded-lg text-xs font-bold transition cursor-pointer"
+                  title="Parâmetros do orçamento"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                  Parâmetros
+                </button>
+                <button
                   onClick={handleExportPDF}
                   className="flex items-center gap-1.5 px-4 py-1.5 bg-[#EA580C] hover:bg-[#C2410C] text-white rounded-lg text-xs font-bold transition shadow-xs cursor-pointer"
                 >
@@ -2464,7 +2462,6 @@ export default function App() {
                 { id: 'terceiros', label: '4. Componentes', icon: Cpu, description: 'Acessórios e terceiros', amount: totals.thirdPartyTotal },
                 { id: 'servicos', label: '5. Serviços', icon: Briefcase, description: 'Usinagem e matrizaria', amount: totals.internalTotal },
                 { id: 'resumo', label: '6. Comercial', icon: TrendingUp, description: 'Preço final e taxas', amount: totals.finalPrice },
-                { id: 'clientes', label: '7. Clientes', icon: Users, description: 'Vincular cliente' },
               ].map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -2527,7 +2524,7 @@ export default function App() {
                     onDateChange={setDate}
                     clients={clients}
                     onAddClient={handleAddClient}
-                    onViewClientsTab={() => setActiveTab('clientes')}
+                    onViewClientsTab={() => setAppView('clientes')}
                   />
                 </section>
               )}
@@ -2571,6 +2568,7 @@ export default function App() {
                     onAddItem={handleAddThirdParty}
                     onDeleteItem={handleDeleteThirdParty}
                     thirdPartyTotal={totals.thirdPartyTotal}
+                    standardComponents={erpStdStock}
                   />
                 </section>
               )}
@@ -2620,25 +2618,6 @@ export default function App() {
                 </section>
               )}
 
-              {/* Section F: Clients Database Selection */}
-              {activeTab === 'clientes' && (
-                <section id="secao-clientes-database">
-                  <ClientsDatabase
-                    clients={clients}
-                    onAddClient={handleAddClient}
-                    onDeleteClient={handleDeleteClient}
-                    onUpdateClient={handleUpdateClient}
-                    onSelectClient={(c) => {
-                      setClientName(c.name);
-                      setContactName(c.responsible || '');
-                      setActiveTab('dados');
-                      showToast(`Cliente "${c.name}" selecionado para o orçamento!`, 'success');
-                    }}
-                    activeClientName={clientName}
-                  />
-                </section>
-              )}
-
             </div>
 
             {/* Progression Stepper Navigation */}
@@ -2647,7 +2626,7 @@ export default function App() {
                 type="button"
                 disabled={activeTab === 'dados'}
                 onClick={() => {
-                  const order: typeof activeTab[] = ['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo', 'clientes'];
+                  const order: typeof activeTab[] = ['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo'];
                   const prevIdx = order.indexOf(activeTab) - 1;
                   if (prevIdx >= 0) setActiveTab(order[prevIdx]);
                 }}
@@ -2661,7 +2640,7 @@ export default function App() {
                 Setor Anterior
               </button>
               <div className="hidden sm:flex items-center gap-1.5">
-                {['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo', 'clientes'].map((step) => (
+                {['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo'].map((step) => (
                   <div 
                     key={step} 
                     className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
@@ -2674,7 +2653,7 @@ export default function App() {
                 type="button"
                 disabled={activeTab === 'clientes'}
                 onClick={() => {
-                  const order: typeof activeTab[] = ['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo', 'clientes'];
+                  const order: typeof activeTab[] = ['dados', 'materiais', 'tempos', 'terceiros', 'servicos', 'resumo'];
                   const nextIdx = order.indexOf(activeTab) + 1;
                   if (nextIdx < order.length) setActiveTab(order[nextIdx]);
                 }}
@@ -3233,6 +3212,7 @@ export default function App() {
                     setSelectedProfileForEdit(null);
                     setFormName('');
                     setFormEmail('');
+                    setFormPhone('');
                     setFormRole('viewer');
                     setFormStatus('pending');
                     setFormSector('Comercial');
@@ -3355,6 +3335,7 @@ export default function App() {
                                   setSelectedProfileForEdit(profile);
                                   setFormName(profile.full_name);
                                   setFormEmail(profile.email);
+                                  setFormPhone(profile.phone || '');
                                   setFormRole(profile.role);
                                   setFormStatus(profile.status);
                                   setFormSector(prof.sector || 'Comercial');
@@ -3454,6 +3435,10 @@ export default function App() {
                           className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500"
                         />
                         {selectedProfileForEdit && <p className="text-[9px] leading-snug text-slate-400">O e-mail de login é administrado pelo Supabase e não pode ser alterado nesta tela.</p>}
+                      </div>
+                      <div className="space-y-1.5">
+                        <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Telefone / WhatsApp do Colaborador</label>
+                        <input type="text" value={formPhone} onChange={(e) => setFormPhone(e.target.value)} placeholder="Ex: (11) 99999-9999" className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs focus:ring-1 focus:ring-[#2563A8] outline-none" />
                       </div>
                       <div className="space-y-1.5">
                         <label className="font-extrabold text-slate-700 uppercase block tracking-wider">Setor Primário</label>
@@ -3638,6 +3623,7 @@ export default function App() {
                             role: formRole,
                             status: formStatus,
                             organization: formOrg,
+                            phone: formPhone,
                             sector: formSector,
                             permissions: normalizePermissions(formPermissions),
                             updated_at: new Date().toISOString()
@@ -3699,13 +3685,6 @@ export default function App() {
           <Users className="w-4 h-4" />
           <span className="text-[10px] uppercase font-bold tracking-wider">Clientes</span>
         </button>
-        <button
-          onClick={() => setIsSettingsOpen(true)}
-          className="flex flex-col items-center gap-1 py-1 px-3 rounded-lg transition hover:text-white"
-        >
-          <Settings className="w-4 h-4" />
-          <span className="text-[10px] uppercase font-bold tracking-wider">Ajustes</span>
-        </button>
       </nav>
 
       {approvalDraft && (
@@ -3735,6 +3714,8 @@ export default function App() {
         rawMaterials={rawMaterials}
         onSaveRawMaterials={handleSaveRawMaterials}
         machiningTypes={machiningTypes}
+        standardComponents={erpStdStock}
+        onSaveStandardComponents={setErpStdStock}
         onSaveMachiningTypes={(types) => {
           setMachiningTypes(types);
           localStorage.setItem('orcamolde_machining_types', JSON.stringify(types));

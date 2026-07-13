@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { ThirdPartyItem } from '../types';
+import { ThirdPartyItem, StandardComponentStock } from '../types';
 import { formatCurrency } from '../utils/pdfGenerator';
 import { Wrench, Plus, Trash2, HelpCircle, PackageOpen } from 'lucide-react';
 
@@ -14,6 +14,7 @@ interface ThirdPartyTableProps {
   onAddItem: (item: { description: string; qtd: number; valUnit: number }) => void;
   onDeleteItem: (id: string) => void;
   thirdPartyTotal: number;
+  standardComponents?: StandardComponentStock[];
 }
 
 export default function ThirdPartyTable({
@@ -22,6 +23,7 @@ export default function ThirdPartyTable({
   onAddItem,
   onDeleteItem,
   thirdPartyTotal,
+  standardComponents = [],
 }: ThirdPartyTableProps) {
   const [newDesc, setNewDesc] = React.useState('');
   const [newQtd, setNewQtd] = React.useState(1);
@@ -38,6 +40,14 @@ export default function ThirdPartyTable({
     setNewDesc('');
     setNewQtd(1);
     setNewPrice(0);
+  };
+
+  const handleSelectCatalogComponent = (componentId: string) => {
+    const component = standardComponents.find(current => current.id === componentId);
+    if (!component) return;
+    setNewDesc(`${component.name}${component.code ? ` (${component.code})` : ''}`);
+    setNewPrice(component.price || 0);
+    setNewQtd(1);
   };
 
   return (
@@ -246,6 +256,24 @@ export default function ThirdPartyTable({
             </h3>
 
             <form onSubmit={handleAddNew} className="space-y-4">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
+                  Puxar do catálogo de componentes
+                </label>
+                <select
+                  value=""
+                  onChange={(e) => handleSelectCatalogComponent(e.target.value)}
+                  className="w-full px-3 py-2 border border-indigo-200 rounded-lg text-xs text-gray-800 bg-indigo-50/40"
+                >
+                  <option value="">Selecione para preencher descrição e preço</option>
+                  {standardComponents.map(component => (
+                    <option key={component.id} value={component.id} disabled={component.stock <= 0}>
+                      {component.catalog} · {component.code} — {component.name}{component.stock <= 0 ? ' (sem estoque)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {standardComponents.length === 0 && <p className="mt-1 text-[10px] text-amber-700">Cadastre componentes em Parâmetros para utilizar o preenchimento automático.</p>}
+              </div>
               <div>
                 <label className="block text-[10px] font-bold uppercase text-gray-500 mb-1">
                   Descrição do Componente

@@ -95,6 +95,7 @@ export interface BudgetDraft {
   proposalItems?: ProposalItem[];
   commercialTerms?: CommercialTerms;
   representativeName?: string;
+  representativePhone?: string;
   representativeEmail?: string;
   totals: {
     materialsTotal: number;
@@ -115,6 +116,9 @@ export interface BudgetDraft {
 
 export interface ProposalItem {
   id: string;
+  /** Título técnico do conjunto/ferramental calculado. */
+  title?: string;
+  /** Tipo de molde que será apresentado ao cliente na proposta. */
   description: string;
   quantity: number;
   unitPrice: number;
@@ -155,6 +159,7 @@ export interface UserProfile {
   status: 'active' | 'pending' | 'inactive';
   organization: string;
   sector?: string;
+  phone?: string;
   permissions?: Record<string, { view?: boolean; create?: boolean; edit?: boolean; delete?: boolean; approve?: boolean }>;
   updated_at: string;
 }

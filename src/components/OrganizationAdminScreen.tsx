@@ -8,6 +8,7 @@ interface OrganizationConfig {
   cnpj: string;
   phone: string;
   email: string;
+  website: string;
   address: string;
   logo: string;
   logoWidth?: number;
@@ -25,6 +26,7 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
     cnpj: '',
     phone: '',
     email: '',
+    website: '',
     address: '',
     logo: ''
   });
@@ -47,6 +49,7 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
           cnpj: profile.cnpj || '',
           phone: profile.phone || '',
           email: profile.email || '',
+          website: profile.website || '',
           address: profile.address || '',
           logo: profile.logo_url || '',
         }));
@@ -59,7 +62,7 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   const persistConfig = async (nextConfig: OrganizationConfig, successMessage = 'Dados da organização salvos no banco corporativo.') => {
     setSaving(true);
     try {
-      const saved = await updateOrganizationProfile({ id: nextConfig.id, name: nextConfig.name, cnpj: nextConfig.cnpj, phone: nextConfig.phone, email: nextConfig.email, address: nextConfig.address, logo_url: nextConfig.logo || null });
+      const saved = await updateOrganizationProfile({ id: nextConfig.id, name: nextConfig.name, cnpj: nextConfig.cnpj, phone: nextConfig.phone, email: nextConfig.email, website: nextConfig.website, address: nextConfig.address, logo_url: nextConfig.logo || null });
       setConfig(current => ({
         ...current,
         id: saved.id || current.id,
@@ -67,6 +70,7 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
         cnpj: saved.cnpj || '',
         phone: saved.phone || '',
         email: saved.email || '',
+        website: saved.website || '',
         address: saved.address || '',
         logo: saved.logo_url || '',
         logoWidth: nextConfig.logoWidth,
@@ -280,6 +284,17 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
                   className="w-full pl-9 pr-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-[#EA580C] focus:border-transparent outline-none"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5 col-span-1 md:col-span-2">
+              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider">Site da Empresa</label>
+              <input
+                type="url"
+                value={config.website}
+                onChange={(e) => setConfig(prev => ({ ...prev, website: e.target.value }))}
+                placeholder="https://www.suaempresa.com.br"
+                className="w-full px-4 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:ring-1 focus:ring-[#EA580C] focus:border-transparent outline-none"
+              />
             </div>
 
             <div className="space-y-1.5">

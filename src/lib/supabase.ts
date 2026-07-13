@@ -91,7 +91,7 @@ export async function updateProfile(id: string, updates: any) {
 
   // A profile is created only by the Auth trigger. Using upsert here asks RLS for
   // INSERT permission as well and consequently blocks an otherwise authorized edit.
-  const allowed = ['full_name', 'role', 'status', 'organization', 'sector', 'permissions'];
+  const allowed = ['full_name', 'role', 'status', 'organization', 'sector', 'phone', 'permissions'];
   const payload = Object.fromEntries(
     Object.entries(updates).filter(([key]) => allowed.includes(key))
   );
@@ -228,6 +228,7 @@ export function mapDbBudgetToBudget(db: any): BudgetDraft {
     proposalItems: configObj.proposalItems || undefined,
     commercialTerms: configObj.commercialTerms || undefined,
     representativeName: configObj.representativeName || undefined,
+    representativePhone: configObj.representativePhone || undefined,
     representativeEmail: configObj.representativeEmail || undefined,
   };
 }
@@ -241,6 +242,7 @@ export function mapBudgetToDbBudget(b: BudgetDraft) {
     proposalItems: b.proposalItems || [],
     commercialTerms: b.commercialTerms || null,
     representativeName: b.representativeName || null,
+    representativePhone: b.representativePhone || null,
     representativeEmail: b.representativeEmail || null,
   };
 
