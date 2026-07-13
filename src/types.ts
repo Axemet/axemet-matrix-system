@@ -127,6 +127,8 @@ export interface UserProfile {
   role: 'admin' | 'manager' | 'operator' | 'viewer';
   status: 'active' | 'pending' | 'inactive';
   organization: string;
+  sector?: string;
+  permissions?: Record<string, { view?: boolean; create?: boolean; edit?: boolean; delete?: boolean; approve?: boolean }>;
   updated_at: string;
 }
 

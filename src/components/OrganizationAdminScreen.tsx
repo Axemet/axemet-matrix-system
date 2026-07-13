@@ -1,7 +1,9 @@
 import React from 'react';
 import { Building, Upload, Trash2, Mail, Phone, MapPin, FileText, ChevronLeft, Save } from 'lucide-react';
+import { getOrganizationProfile, updateOrganizationProfile } from '../lib/organization';
 
 interface OrganizationConfig {
+  id?: string;
   name: string;
   cnpj: string;
   phone: string;
@@ -30,21 +32,13 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   const [dragActive, setDragActive] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  React.useEffect(() => {
-    const saved = localStorage.getItem('organization_config');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        setConfig(prev => ({ ...prev, ...parsed }));
-      } catch (e) {
-        console.error('Error loading organization config:', e);
-      }
-    }
-  }, []);
+  React.useEffect(() => { getOrganizationProfile().then(profile => { if (profile) setConfig(prev => ({...prev, ...profile, logo: profile.logo_url || ''})); }).catch((error:any) => showToast(error.message || 'Não foi possível carregar a organização.', 'error')); }, [showToast]);
 
-  const handleSave = () => {
-    localStorage.setItem('organization_config', JSON.stringify(config));
-    showToast('Dados da organização salvos com sucesso!', 'success');
+  const handleSave = async () => {
+    try {
+      await updateOrganizationProfile({ id: config.id, name: config.name, cnpj: config.cnpj, phone: config.phone, email: config.email, address: config.address, logo_url: config.logo || undefined });
+      showToast('Dados da organização salvos no banco corporativo.', 'success');
+    } catch (error:any) { showToast(error.message || 'Não foi possível salvar a organização.', 'error'); }
   };
 
   const handleLogoUpload = (file: File) => {
@@ -94,7 +88,6 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
             
             setConfig(prev => {
               const newConfig = { ...prev, logo: cleanDataUrl, logoWidth: width, logoHeight: height };
-              localStorage.setItem('organization_config', JSON.stringify(newConfig));
               return newConfig;
             });
             showToast('Logotipo carregado, otimizado e salvo com sucesso!', 'success');
@@ -102,7 +95,6 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
             // Fallback if canvas context is not available
             setConfig(prev => {
               const newConfig = { ...prev, logo: logoDataUrl, logoWidth: img.width, logoHeight: img.height };
-              localStorage.setItem('organization_config', JSON.stringify(newConfig));
               return newConfig;
             });
             showToast('Logotipo carregado com sucesso!', 'success');
@@ -139,7 +131,6 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   const handleRemoveLogo = () => {
     setConfig(prev => {
       const newConfig = { ...prev, logo: '', logoWidth: undefined, logoHeight: undefined };
-      localStorage.setItem('organization_config', JSON.stringify(newConfig));
       return newConfig;
     });
     showToast('Logotipo removido.', 'info');

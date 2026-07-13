@@ -55,9 +55,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
     setRememberMe(savedRemember);
     if (savedRemember) {
       const savedUser = localStorage.getItem('mm_saved_username') || '';
-      const savedPass = localStorage.getItem('mm_saved_password') || '';
       if (savedUser) setUsernameOrEmail(savedUser);
-      if (savedPass) setPassword(savedPass);
     }
   }, []);
 
@@ -97,40 +95,18 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         setIsSignUp(false); // Switch to login tab
         setPassword(''); // Clear password
       } else {
-        // Login Flow
-        // 1. If it looks like an email and Supabase is active, authenticate with Supabase Auth
+        // Corporate login is always authenticated by Supabase. Credentials are never stored locally.
         if (credential.includes('@') && isSupabaseConfigured) {
           localStorage.setItem('mm_remember_me', rememberMe ? 'true' : 'false');
           if (rememberMe) {
             localStorage.setItem('mm_saved_username', credential);
-            localStorage.setItem('mm_saved_password', pwd);
           } else {
             localStorage.removeItem('mm_saved_username');
-            localStorage.removeItem('mm_saved_password');
           }
           await signInUser(credential, pwd);
           // App state is handled reactively by onAuthStateChange in App.tsx
         } else {
-          // 2. Otherwise try local login
-          const localSuccess = onLogin(credential, pwd, rememberMe);
-          if (!localSuccess) {
-            if (isSupabaseConfigured && credential.includes('@')) {
-              setError('Falha na autenticação via Supabase. Verifique seu e-mail/senha.');
-            } else {
-              setError('Nome de usuário ou senha incorretos.');
-            }
-          } else {
-            // Save local credentials if authorized and Remember Me checked
-            if (rememberMe) {
-              localStorage.setItem('mm_saved_username', credential);
-              localStorage.setItem('mm_saved_password', pwd);
-              localStorage.setItem('mm_remember_me', 'true');
-            } else {
-              localStorage.removeItem('mm_saved_username');
-              localStorage.removeItem('mm_saved_password');
-              localStorage.setItem('mm_remember_me', 'false');
-            }
-          }
+          setError('Use um e-mail corporativo válido. O acesso exige autenticação Supabase configurada.');
         }
       }
     } catch (err: any) {
@@ -189,20 +165,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
 
         setSuccess(`Instruções de redefinição de senha enviadas para ${emailOrUser}. Verifique sua caixa de entrada.`);
         setRecoveryView('enter_code');
-      } else {
-        // Offline / local simulation
-        const target = emailOrUser.toLowerCase();
-        if (target === 'admin' || target === 'mmmatrizes' || target === 'filipesantos.ind85@gmail.com') {
-          // Generate an OTP code
-          const code = `MX-${Math.floor(1000 + Math.random() * 9000)}`;
-          setGeneratedCode(code);
-          
-          setSuccess(`Simulação offline: Código de verificação corporativo gerado: ${code}`);
-          setRecoveryView('enter_code');
-        } else {
-          setError('Usuário ou e-mail corporativo não encontrado no banco de dados.');
-        }
-      }
+      } else setError('A recuperação de senha exige o Supabase configurado e um e-mail corporativo.');
     } catch (err: any) {
       setError(err.message || 'Erro ao enviar solicitação de recuperação.');
     } finally {
@@ -244,27 +207,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         if (updateErr) throw updateErr;
 
         setRecoveryView('success_reset');
-      } else {
-        // Offline simulation
-        if (recoveryCode.trim() !== generatedCode && recoveryCode.trim() !== '1234' && recoveryCode.trim() !== 'MX-9999') {
-          setError('Código de verificação inválido ou expirado.');
-          setIsLoading(false);
-          return;
-        }
-
-        // Persist password update
-        if (emailOrUser === 'admin') {
-          localStorage.setItem('mm_custom_admin_pass', newPassword);
-        } else {
-          localStorage.setItem('mm_custom_mmmatrizes_pass', newPassword);
-        }
-
-        // Auto populate in login state
-        setUsernameOrEmail(recoveryEmail.trim());
-        setPassword(newPassword);
-
-        setRecoveryView('success_reset');
-      }
+      } else setError('A redefinição de senha exige o link seguro enviado pelo Supabase.');
     } catch (err: any) {
       setError(err.message || 'Não foi possível redefinir sua senha.');
     } finally {
@@ -283,9 +226,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         
         {/* Top brand */}
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 bg-[#C8A435] rounded-xl flex items-center justify-center font-black text-sm text-[#0F2A43] shadow-lg border border-yellow-500/20">
-            MX
-          </div>
+          <img src="/axemet-system-logo.png" alt="Axemet System" className="h-12 w-12 rounded-xl object-cover shadow-lg ring-1 ring-[#C8A435]/40" />
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-xs font-bold text-white uppercase mt-1 tracking-wider leading-none">

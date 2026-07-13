@@ -6,6 +6,7 @@
 import { jsPDF } from 'jspdf';
 import { BudgetDraft } from '../types';
 import { getMarginPercent } from './calculations';
+import { getOrganizationProfile } from '../lib/organization';
 
 export function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', {
@@ -21,7 +22,7 @@ export function formatNumber(value: number, decimals: number = 2): string {
   }).format(value);
 }
 
-export function generateBudgetPDF(draft: BudgetDraft): void {
+export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   const doc = new jsPDF({
     orientation: 'portrait',
     unit: 'mm',
@@ -60,21 +61,16 @@ export function generateBudgetPDF(draft: BudgetDraft): void {
   let orgLogoWidth: number | undefined;
   let orgLogoHeight: number | undefined;
   try {
-    const orgData = localStorage.getItem('organization_config');
-    if (orgData) {
-      const parsed = JSON.parse(orgData);
-      if (parsed.name) orgName = parsed.name;
-      if (parsed.cnpj) orgCnpj = parsed.cnpj;
-      if (parsed.phone) orgPhone = parsed.phone;
-      if (parsed.email) orgEmail = parsed.email;
-      if (parsed.address) orgAddress = parsed.address;
-      if (parsed.logo) orgLogo = parsed.logo;
-      if (parsed.logoWidth) orgLogoWidth = Number(parsed.logoWidth);
-      if (parsed.logoHeight) orgLogoHeight = Number(parsed.logoHeight);
+    const profile = await getOrganizationProfile();
+    if (profile) {
+      orgName = profile.name || orgName;
+      orgCnpj = profile.cnpj || '';
+      orgPhone = profile.phone || '';
+      orgEmail = profile.email || '';
+      orgAddress = profile.address || '';
+      orgLogo = profile.logo_url || '';
     }
-  } catch (e) {
-    console.error('Error reading organization config:', e);
-  }
+  } catch (e) { console.warn('Não foi possível carregar a organização para o PDF.', e); }
 
   // Left: Logo or text block
   let hasLogo = false;

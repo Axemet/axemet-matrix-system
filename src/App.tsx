@@ -85,6 +85,11 @@ import Modulo9Compras from './components/Modulo9Compras';
 import Modulo10Manutencao from './components/Modulo10Manutencao';
 import Modulo11BI from './components/Modulo11BI';
 import ModuloRH from './components/ModuloRH';
+import SuppliersModule from './components/SuppliersModule';
+import IndustrialProjectsModule from './components/IndustrialProjectsModule';
+import PurchasingModule from './components/PurchasingModule';
+import { approveBudgetToProject } from './lib/industrial';
+import { loadOrganizationSettings, saveOrganizationSettings } from './lib/settings';
 
 // Icons
 import { 
@@ -145,9 +150,19 @@ function generateNextReference(existingDrafts: BudgetDraft[]): string {
   return `${String(nextNum).padStart(4, '0')}${yearSuffix}`;
 }
 
+function normalizePermissions(source: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean; approve: boolean }>) {
+  const map: Record<string, string> = { Comercial: 'comercial', Engenharia: 'engenharia', PCP: 'pcp', Produção: 'producao', Almoxarifado: 'estoque', Compras: 'compras', Qualidade: 'qualidade', Controladoria: 'controladoria', Financeiro: 'financeiro', Manutenção: 'manutencao', BI: 'bi' };
+  return Object.fromEntries(Object.entries(source).map(([key, value]) => [map[key] || key.toLowerCase(), value]));
+}
+
+function displayPermissions(source: Record<string, any>) {
+  const map: Record<string, string> = { comercial: 'Comercial', engenharia: 'Engenharia', pcp: 'PCP', producao: 'Produção', estoque: 'Almoxarifado', compras: 'Compras', qualidade: 'Qualidade', controladoria: 'Controladoria', financeiro: 'Financeiro', manutencao: 'Manutenção', bi: 'BI', rh: 'RH' };
+  return Object.fromEntries(Object.entries(source || {}).map(([key, value]) => [map[key] || key, value]));
+}
+
 export default function App() {
   // Navigation & View Mode for the Axemet CRM & budgeting flow
-  const [appView, setAppView] = React.useState<'home' | 'editor' | 'details' | 'clientes' | 'crm' | 'producao' | 'acessos' | 'organizacao' | 'rh' | 'modulo2' | 'modulo3' | 'modulo4' | 'modulo5' | 'modulo6' | 'modulo7' | 'modulo8' | 'modulo9' | 'modulo10' | 'modulo11'>('modulo11');
+  const [appView, setAppView] = React.useState<'home' | 'editor' | 'details' | 'clientes' | 'crm' | 'producao' | 'projetos' | 'acessos' | 'organizacao' | 'rh' | 'fornecedores' | 'modulo2' | 'modulo3' | 'modulo4' | 'modulo5' | 'modulo6' | 'modulo7' | 'modulo8' | 'modulo9' | 'modulo10' | 'modulo11'>('modulo11');
 
   // --- INTEGRATED ERP 11-MODULE STATES ---
   const [erpProjects, setErpProjects] = React.useState<MatrixProject[]>(() => {
@@ -278,7 +293,8 @@ export default function App() {
       }
     ];
 
-    const targetList = Array.isArray(loaded) ? loaded : defaultProjects;
+    // Production starts with the company's own records. Demo projects are never loaded automatically.
+    const targetList = Array.isArray(loaded) ? loaded : [];
 
     // Smart migration for backward compatibility
     return targetList.map((p: any) => {
@@ -347,10 +363,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'raw_1', type: 'Aço P20', dimensions: '400x500x120mm', weight: 188, batch: 'CRT-29402', qualityDureza: '32 HRC', certificateUrl: 'cert_p20_g1.pdf', status: 'available' },
-      { id: 'raw_2', type: 'Aço H13', dimensions: '150x150x80mm', weight: 14, batch: 'CRT-98321', qualityDureza: '30 HRC', certificateUrl: 'cert_h13_r4.pdf', status: 'available' }
-    ];
+    return [];
   });
 
   const [erpStdStock, setErpStdStock] = React.useState<StandardComponentStock[]>(() => {
@@ -358,10 +371,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'std_1', catalog: 'Polimold', code: 'CG-25x150', name: 'Coluna de Guia Ø25x150mm', stock: 12, minStock: 8, price: 110 },
-      { id: 'std_2', catalog: 'Hasco', code: 'Z12/12x100', name: 'Pino Extrator Ø12x100mm', stock: 4, minStock: 20, price: 45 }
-    ];
+    return [];
   });
 
   const [erpAudits, setErpAudits] = React.useState<QualityInspection[]>(() => {
@@ -369,9 +379,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'aud_1', auditName: 'Metrologia Dimensional Cavidades', date: '2026-07-09', inspector: 'Roberto Lima', remarks: 'Folgas de montagem toleradas abaixo de 0.02mm.', status: 'approved' }
-    ];
+    return [];
   });
 
   const [erpRncs, setErpRncs] = React.useState<NonConformance[]>(() => {
@@ -379,9 +387,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'rnc_1', title: 'Empenamento Placa P3', origin: 'Tratamento Térmico', description: 'Dureza excessiva na têmpera causou microfissura na base.', treatment: 'Alívio de tensões por revenimento adicional.', status: 'in_progress' }
-    ];
+    return [];
   });
 
   const [erpMilestones, setErpMilestones] = React.useState<BillingMilestone[]>(() => {
@@ -389,10 +395,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'ms_1', projectId: 'p_1', projectName: '0001/2026', description: 'Assinatura do Contrato (Sinal 30%)', percent: 30, value: 36000, dueDate: '2026-07-01', status: 'paid' },
-      { id: 'ms_2', projectId: 'p_1', projectName: '0001/2026', description: 'Aprovação Try-Out T1 (40%)', percent: 40, value: 48000, dueDate: '2026-07-28', status: 'pending' }
-    ];
+    return [];
   });
 
   const [erpTransactions, setErpTransactions] = React.useState<CashTransaction[]>(() => {
@@ -400,10 +403,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 't_1', projectId: 'p_1', projectName: '0001/2026', type: 'receita', category: 'cliente_faturamento', description: 'Sinal 30% Adiantamento Parachoque G6', value: 36000, date: '2026-07-01', status: 'paid' },
-      { id: 't_2', projectId: 'p_1', projectName: '0001/2026', type: 'despesa', category: 'material', description: 'Compra Aço P20 Cavidades Gerdau', value: 12000, date: '2026-07-02', status: 'paid' }
-    ];
+    return [];
   });
 
   const [erpRequests, setErpRequests] = React.useState<PurchaseRequest[]>(() => {
@@ -411,9 +411,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'req_1', projectId: 'p_1', projectName: '0001/2026', itemType: 'materia_prima', description: 'Bloco de Cobre Eletrolítico 80x80x150mm', qty: 2, status: 'pending_quote' }
-    ];
+    return [];
   });
 
   const [erpMaintLogs, setErpMaintLogs] = React.useState<MaintenanceLog[]>(() => {
@@ -421,9 +419,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 'm_1', projectId: 'p_1', projectName: '0001/2026', cycles: 120000, type: 'preventative', description: 'Polimento manual das cavidades e reaperto da gaveta hidráulica.', partsReplaced: [], cost: 250, date: '2026-07-05', responsible: 'Henrique Ajustador', isWarranty: true, status: 'completed' }
-    ];
+    return [];
   });
 
   // Automatically persist ERP states
@@ -469,10 +465,7 @@ export default function App() {
     if (saved) {
       try { return JSON.parse(saved); } catch (e) { console.error(e); }
     }
-    return [
-      { id: 't_1', code: 'F-10-CO', name: 'Fresa Inteiriça Metal Duro Ø10mm Z4', type: 'fresa', stock: 5, minStock: 3, cost: 180, activeCycles: 24, maxCycles: 100, status: 'available' },
-      { id: 't_2', code: 'M-12-MA', name: 'Macho de Roscar M12 Canal Helicoidal', type: 'macho', stock: 2, minStock: 2, cost: 95, activeCycles: 5, maxCycles: 50, status: 'available' }
-    ];
+    return [];
   });
 
   React.useEffect(() => {
@@ -574,7 +567,7 @@ export default function App() {
   });
   
   const handleCopySQL = () => {
-    navigator.clipboard.writeText(MIGRATION_SQL);
+    navigator.clipboard.writeText('Use as migrações versionadas na pasta supabase/migrations. Não execute scripts de demonstração ou cópias antigas.');
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -665,7 +658,7 @@ export default function App() {
   const [clients, setClients] = React.useState<Client[]>([]);
 
   // Raw Materials state
-  const [rawMaterials, setRawMaterials] = React.useState<RawMaterial[]>(DEFAULT_RAW_MATERIALS);
+  const [rawMaterials, setRawMaterials] = React.useState<RawMaterial[]>([]);
 
   // Reference Code State
   const [reference, setReference] = React.useState('');
@@ -698,13 +691,7 @@ export default function App() {
 
   // Machining Types State
   const [machiningTypes, setMachiningTypes] = React.useState<MachiningType[]>(() => {
-    const defaultTypes = [
-      { id: 'mt_fresa', name: 'Usinagem Aço', hourlyRate: 160.0 },
-      { id: 'mt_fresa_temp', name: 'Usinagem Aço Temperado', hourlyRate: 200.0 },
-      { id: 'mt_fresa_alum', name: 'Usinagem Alumínio', hourlyRate: 100.0 },
-      { id: 'mt_erosao', name: 'Erosão', hourlyRate: 75.0 },
-      { id: 'mt_retifica', name: 'Retífica', hourlyRate: 120.0 },
-    ];
+    const defaultTypes: MachiningType[] = [];
     const saved = localStorage.getItem('orcamolde_machining_types');
     if (saved) {
       try {
@@ -734,6 +721,9 @@ export default function App() {
   // Drafts History State
   const [drafts, setDrafts] = React.useState<BudgetDraft[]>([]);
   const [activeDraftId, setActiveDraftId] = React.useState<string | null>(null);
+  const [approvalDraft, setApprovalDraft] = React.useState<BudgetDraft | null>(null);
+  const [approvalProjectCode, setApprovalProjectCode] = React.useState('');
+  const [approvalDueDate, setApprovalDueDate] = React.useState('');
 
   // Home Screen Search & Filters State
   const [homeSearchTerm, setHomeSearchTerm] = React.useState('');
@@ -755,6 +745,20 @@ export default function App() {
   const showToast = (text: string, type: 'success' | 'info' | 'error' = 'success') => {
     setToastMessage({ text, type });
   };
+
+  const canOpenView = React.useCallback((view: string) => {
+    if (!userProfile || userProfile.role === 'admin' || userProfile.role === 'manager') return true;
+    const moduleByView: Record<string, string> = { home: 'comercial', editor: 'comercial', details: 'comercial', clientes: 'comercial', crm: 'comercial', fornecedores: 'compras', projetos: 'producao', producao: 'producao', modulo2: 'engenharia', modulo3: 'pcp', modulo4: 'estoque', modulo5: 'producao', modulo6: 'qualidade', modulo7: 'controladoria', modulo8: 'financeiro', modulo9: 'compras', modulo10: 'manutencao', rh: 'rh' };
+    const module = moduleByView[view];
+    return !module || !!userProfile.permissions?.[module]?.view;
+  }, [userProfile]);
+
+  React.useEffect(() => {
+    if (isLoggedIn && !canOpenView(appView)) {
+      setAppView('modulo11');
+      showToast('Você não possui permissão para acessar este módulo.', 'error');
+    }
+  }, [appView, canOpenView, isLoggedIn]);
 
   const handleLoginAttempt = (): boolean => false;
 
@@ -801,70 +805,32 @@ export default function App() {
             return [];
           };
 
-          const [dbClients, dbMaterials, dbMachiningTypes, dbServices, dbBudgets] = await Promise.all([
+          const [dbClients, dbMaterials, dbMachiningTypes, dbServices, dbBudgets, dbConfig] = await Promise.all([
             syncFetchClients().catch((err) => handleFetchError('Clients', err)),
             syncFetchMaterials().catch((err) => handleFetchError('Materials', err)),
             syncFetchMachiningTypes().catch((err) => handleFetchError('Machining types', err)),
             syncFetchServices().catch((err) => handleFetchError('Services', err)),
             syncFetchBudgets().catch((err) => handleFetchError('Budgets', err)),
+            loadOrganizationSettings().catch((err) => handleFetchError('Organization settings', err)),
           ]);
 
           if (schemaMissing) {
             setIsSupabaseSchemaMissing(true);
-            showToast('Tabelas do Supabase não encontradas. Usando modo de simulação/local.', 'error');
-            throw new Error('Supabase schema is missing, falling back to local storage');
+            showToast('As tabelas corporativas ainda não foram aplicadas no Supabase.', 'error');
+            return;
           }
 
-          let activeClients = dbClients;
-          if (activeClients.length === 0) {
-            const INITIAL_CLIENTS: Client[] = [
-              {
-                id: 'client_1',
-                name: 'Metalúrgica Aliança S/A',
-                cnpj: '98.765.432/0001-00',
-                phone: '(47) 3456-7890',
-                email: 'suprimentos@alianca.com',
-                city: 'Caxias do Sul - RS',
-              },
-              {
-                id: 'client_2',
-                name: 'Metalúrgica Teste Ltda.',
-                cnpj: '12.345.678/0001-99',
-                phone: '(11) 98765-4321',
-                email: 'compras@metaltes.com',
-                city: 'Joinville - SC',
-              },
-              {
-                id: 'client_3',
-                name: 'Plásticos do Brasil S.A.',
-                cnpj: '45.678.901/0001-22',
-                phone: '(19) 3211-5544',
-                email: 'contato@plasticosbr.com',
-                city: 'Sorocaba - SP',
-              }
-            ];
-            activeClients = INITIAL_CLIENTS;
-            setClients(INITIAL_CLIENTS);
-            for (const c of INITIAL_CLIENTS) {
-              await syncSaveClient(c).catch(console.error);
-            }
-          } else {
-            setClients(dbClients);
-          }
+          const activeClients = dbClients;
+          setClients(dbClients);
+          activeConfig = { ...DEFAULT_CONFIG, ...dbConfig };
+          setConfig(activeConfig);
 
           let activeRawMaterials = dbMaterials;
-          if (activeRawMaterials.length === 0) {
-            activeRawMaterials = DEFAULT_RAW_MATERIALS;
-            setRawMaterials(DEFAULT_RAW_MATERIALS);
-            await syncSaveRawMaterials(DEFAULT_RAW_MATERIALS).catch(console.error);
-          } else {
-            setRawMaterials(dbMaterials);
-          }
+          if (activeRawMaterials.length === 0) activeRawMaterials = [];
+          setRawMaterials(activeRawMaterials);
 
           if (dbMachiningTypes.length > 0) {
             setMachiningTypes(dbMachiningTypes);
-          } else {
-            await syncSaveMachiningTypes(machiningTypes).catch(console.error);
           }
 
           setDrafts(dbBudgets);
@@ -875,31 +841,17 @@ export default function App() {
           const initialMaterials = generateZeroMaterials(activeConfig, activeRawMaterials);
           setMaterials(initialMaterials);
 
-          setThirdPartyItems(
-            DEFAULT_THIRD_PARTY_ITEMS.map((item, index) => ({
-              ...item,
-              id: `tp_${index}`,
-              total: 0,
-            }))
-          );
+          setThirdPartyItems([]);
 
-          const initialServices = DEFAULT_INTERNAL_SERVICES.map((item, index) => {
-            const srvId = `srv_${index}`;
-            const foundDb = dbServices.find((r: any) => r.name === item.name || r.id === srvId);
-            return {
-              ...item,
-              id: srvId,
-              valUnit: foundDb ? foundDb.valUnit : item.valUnit,
-              total: 0,
-            };
-          });
+          const initialServices = dbServices.map((item: any) => ({ ...item, qtd: 0, total: 0 }));
           setInternalServices(initialServices);
 
           showToast('Dados sincronizados com o Supabase!', 'success');
           return;
         } catch (e) {
-          console.error('Falha na sincronização do Supabase, usando localStorage:', e);
-          showToast('Erro ao sincronizar com Supabase. Usando armazenamento local.', 'error');
+          console.error('Falha na sincronização do Supabase:', e);
+          showToast('Erro ao sincronizar com o Supabase. Nenhum dado local será usado.', 'error');
+          return;
         }
       }
 
@@ -919,7 +871,7 @@ export default function App() {
       setReference(nextRef);
 
       const savedRawMaterials = localStorage.getItem('orcamolde_raw_materials');
-      let loadedRawMaterials = DEFAULT_RAW_MATERIALS;
+      let loadedRawMaterials: RawMaterial[] = [];
       if (savedRawMaterials) {
         try {
           loadedRawMaterials = JSON.parse(savedRawMaterials);
@@ -936,47 +888,12 @@ export default function App() {
         } catch (e) {
           console.error('Erro ao carregar clientes', e);
         }
-      } else {
-        const INITIAL_CLIENTS: Client[] = [
-          {
-            id: 'client_1',
-            name: 'Metalúrgica Aliança S/A',
-            cnpj: '98.765.432/0001-00',
-            phone: '(47) 3456-7890',
-            email: 'suprimentos@alianca.com',
-            city: 'Caxias do Sul - RS',
-          },
-          {
-            id: 'client_2',
-            name: 'Metalúrgica Teste Ltda.',
-            cnpj: '12.345.678/0001-99',
-            phone: '(11) 98765-4321',
-            email: 'compras@metaltes.com',
-            city: 'Joinville - SC',
-          },
-          {
-            id: 'client_3',
-            name: 'Plásticos do Brasil S.A.',
-            cnpj: '45.678.901/0001-22',
-            phone: '(19) 3211-5544',
-            email: 'contato@plasticosbr.com',
-            city: 'Sorocaba - SP',
-          }
-        ];
-        setClients(INITIAL_CLIENTS);
-        localStorage.setItem('orcamolde_clients', JSON.stringify(INITIAL_CLIENTS));
-      }
+      } else setClients([]);
 
       const initialMaterials = generateZeroMaterials(activeConfig, loadedRawMaterials);
       setMaterials(initialMaterials);
 
-      setThirdPartyItems(
-        DEFAULT_THIRD_PARTY_ITEMS.map((item, index) => ({
-          ...item,
-          id: `tp_${index}`,
-          total: 0,
-        }))
-      );
+      setThirdPartyItems([]);
 
       const savedRates = localStorage.getItem('orcamolde_service_rates');
       let loadedRates: any[] = [];
@@ -988,16 +905,7 @@ export default function App() {
         }
       }
 
-      const initialServices = DEFAULT_INTERNAL_SERVICES.map((item, index) => {
-        const srvId = `srv_${index}`;
-        const foundSaved = loadedRates.find(r => r.name === item.name || r.id === srvId);
-        return {
-          ...item,
-          id: srvId,
-          valUnit: foundSaved ? foundSaved.valUnit : item.valUnit,
-          total: 0,
-        };
-      });
+      const initialServices = loadedRates.map((item: any) => ({ ...item, qtd: 0, total: 0 }));
       setInternalServices(initialServices);
 
       showToast('Sistema carregado com sucesso. Molde padrão 250x250 configurado.', 'info');
@@ -1016,158 +924,36 @@ export default function App() {
             if (profs && profs.length > 0) {
               setProfilesList(profs);
             } else {
-              // Fallback default mock profile list if empty
-              setProfilesList([
-                {
-                  id: 'local_admin',
-                  email: 'admin@axemet.com',
-                  full_name: 'Administrador Local (Simulado)',
-                  role: 'admin',
-                  status: 'active',
-                  organization: 'Axemet Solution LTDA',
-                  updated_at: new Date().toISOString(),
-                },
-                {
-                  id: 'mock_user_1',
-                  email: 'operador@cliente.com',
-                  full_name: 'Marcos de Souza (Operador)',
-                  role: 'operator',
-                  status: 'active',
-                  organization: 'Metalúrgica Aliança S/A',
-                  updated_at: new Date().toISOString(),
-                },
-                {
-                  id: 'mock_user_2',
-                  email: 'visitante@cliente.com',
-                  full_name: 'Beatriz Costa (Leitor)',
-                  role: 'viewer',
-                  status: 'pending',
-                  organization: 'Metalúrgica Teste Ltda.',
-                  updated_at: new Date().toISOString(),
-                }
-              ]);
+              setProfilesList([]);
             }
           })
           .catch((err) => {
             console.warn('Erro ao buscar perfis:', err);
-            // Non-blocking fallback
-            setProfilesList([
-              {
-                id: 'local_admin',
-                email: 'admin@axemet.com',
-                full_name: 'Administrador Local (Simulado)',
-                role: 'admin',
-                status: 'active',
-                organization: 'Axemet Solution LTDA',
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 'mock_user_1',
-                email: 'operador@cliente.com',
-                full_name: 'Marcos de Souza (Operador)',
-                role: 'operator',
-                status: 'active',
-                organization: 'Metalúrgica Aliança S/A',
-                updated_at: new Date().toISOString(),
-              },
-              {
-                id: 'mock_user_2',
-                email: 'visitante@cliente.com',
-                full_name: 'Beatriz Costa (Leitor)',
-                role: 'viewer',
-                status: 'pending',
-                organization: 'Metalúrgica Teste Ltda.',
-                updated_at: new Date().toISOString(),
-              }
-            ]);
+            setProfilesList([]);
           })
           .finally(() => {
             setProfileLoading(false);
           });
       } else {
-        // Mock profile list in local offline mode or when schema is missing
-        setProfilesList([
-          {
-            id: 'local_admin',
-            email: 'admin@axemet.com',
-            full_name: 'Administrador Local (Simulado)',
-            role: 'admin',
-            status: 'active',
-            organization: 'Axemet Solution LTDA',
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock_user_1',
-            email: 'operador@cliente.com',
-            full_name: 'Marcos de Souza (Operador)',
-            role: 'operator',
-            status: 'active',
-            organization: 'Metalúrgica Aliança S/A',
-            updated_at: new Date().toISOString(),
-          },
-          {
-            id: 'mock_user_2',
-            email: 'visitante@cliente.com',
-            full_name: 'Beatriz Costa (Leitor)',
-            role: 'viewer',
-            status: 'pending',
-            organization: 'Metalúrgica Teste Ltda.',
-            updated_at: new Date().toISOString(),
-          }
-        ]);
+        setProfilesList([]);
       }
     }
   }, [appView, isSupabaseSchemaMissing]);
 
   // --- CLIENT DATABASE HANDLERS ---
   const handleAddClient = async (newClient: Client) => {
-    setClients((prev) => {
-      const updated = [...prev, newClient];
-      localStorage.setItem('orcamolde_clients', JSON.stringify(updated));
-      return updated;
-    });
-    if (isSupabaseConfigured) {
-      try {
-        await syncSaveClient(newClient);
-      } catch (e) {
-        console.error('Erro ao salvar cliente no Supabase:', e);
-        showToast('Salvo localmente, erro de sincronização com Supabase', 'error');
-      }
-    }
-    showToast(`Cliente "${newClient.name}" cadastrado com sucesso!`, 'success');
+    try { await syncSaveClient(newClient); setClients(prev => [...prev, newClient]); showToast(`Cliente "${newClient.name}" cadastrado com sucesso!`, 'success'); }
+    catch (e) { console.error('Erro ao salvar cliente no Supabase:', e); showToast('O cliente não foi salvo no banco.', 'error'); }
   };
 
   const handleDeleteClient = async (id: string) => {
-    setClients((prev) => {
-      const updated = prev.filter((c) => c.id !== id);
-      localStorage.setItem('orcamolde_clients', JSON.stringify(updated));
-      return updated;
-    });
-    if (isSupabaseConfigured) {
-      try {
-        await syncDeleteClient(id);
-      } catch (e) {
-        console.error('Erro ao deletar cliente no Supabase:', e);
-      }
-    }
-    showToast('Cliente excluído do banco de dados.');
+    try { await syncDeleteClient(id); setClients(prev => prev.filter(c => c.id !== id)); showToast('Cliente excluído do banco de dados.'); }
+    catch (e) { console.error('Erro ao deletar cliente no Supabase:', e); showToast('O cliente não foi excluído do banco.', 'error'); }
   };
 
   const handleUpdateClient = async (updatedClient: Client) => {
-    setClients((prev) => {
-      const updated = prev.map((c) => (c.id === updatedClient.id ? updatedClient : c));
-      localStorage.setItem('orcamolde_clients', JSON.stringify(updated));
-      return updated;
-    });
-    if (isSupabaseConfigured) {
-      try {
-        await syncSaveClient(updatedClient);
-      } catch (e) {
-        console.error('Erro ao atualizar cliente no Supabase:', e);
-        showToast('Salvo localmente, erro de sincronização com Supabase', 'error');
-      }
-    }
-    showToast(`Cliente "${updatedClient.name}" alterado com sucesso!`, 'success');
+    try { await syncSaveClient(updatedClient); setClients(prev => prev.map(c => c.id === updatedClient.id ? updatedClient : c)); showToast(`Cliente "${updatedClient.name}" alterado com sucesso!`, 'success'); }
+    catch (e) { console.error('Erro ao atualizar cliente no Supabase:', e); showToast('O cliente não foi atualizado no banco.', 'error'); }
   };
 
   const handleUpdateProfile = async (profileId: string, updates: Partial<UserProfile>) => {
@@ -1364,10 +1150,9 @@ export default function App() {
   };
 
   // Save Config parameters
-  const handleSaveConfig = (newConfig: ConfigParams) => {
-    setConfig(newConfig);
-    localStorage.setItem('mold_config', JSON.stringify(newConfig));
-    showToast('Configurações salvas e aplicadas com sucesso.');
+  const handleSaveConfig = async (newConfig: ConfigParams) => {
+    try { await saveOrganizationSettings(newConfig); setConfig(newConfig); showToast('Configurações corporativas salvas e aplicadas.', 'success'); }
+    catch (error:any) { showToast(error.message || 'Não foi possível salvar as configurações.', 'error'); }
   };
 
   const handleSaveServiceRates = async (newRates: InternalServiceItem[]) => {
@@ -1471,17 +1256,8 @@ export default function App() {
       updatedDrafts = [newDraft, ...drafts];
     }
 
-    setDrafts(updatedDrafts);
-    localStorage.setItem('mold_drafts', JSON.stringify(updatedDrafts));
-    
-    if (isSupabaseConfigured) {
-      try {
-        await syncSaveBudget(newDraft);
-      } catch (e) {
-        console.error('Erro ao salvar orçamento no Supabase:', e);
-        showToast('Salvo localmente, erro de sincronização com Supabase', 'error');
-      }
-    }
+    try { await syncSaveBudget(newDraft); setDrafts(updatedDrafts); }
+    catch (e) { console.error('Erro ao salvar orçamento no Supabase:', e); showToast('O orçamento não foi salvo no banco.', 'error'); return; }
 
     if (isEditing) {
       showToast('Alterações salvas no orçamento existente com sucesso!', 'success');
@@ -1740,9 +1516,7 @@ export default function App() {
                     </button>
                   </div>
                   <div className="relative">
-                    <pre className="bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-[10px] overflow-auto max-h-60 text-slate-300 select-all leading-normal whitespace-pre">
-                      {MIGRATION_SQL}
-                    </pre>
+                    <pre className="bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-[10px] overflow-auto max-h-60 text-slate-300 select-all leading-normal whitespace-pre">Use as migrações versionadas em supabase/migrations, na ordem cronológica. Não execute scripts legados de demonstração.</pre>
                   </div>
                 </div>
               </div>
@@ -1778,9 +1552,7 @@ export default function App() {
       <aside className="axemet-sidebar hidden md:flex flex-col w-72 bg-[#0F2A43] text-slate-100 border-r border-[#1A3F6F] shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
         {/* Brand/Logo */}
         <div className="axemet-brand p-5 border-b border-[#1A3F6F] flex items-center gap-3 bg-[#0B1E30]">
-          <div className="w-10 h-10 bg-[#2563A8] rounded-xl flex items-center justify-center font-black text-sm text-white border-2 border-[#C8A435] shadow-lg">
-            AX
-          </div>
+          <img src="/axemet-system-logo.png" alt="Axemet System" className="w-10 h-10 rounded-xl object-cover border border-[#C8A435] shadow-lg" />
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase mt-1 leading-none">
@@ -1793,7 +1565,7 @@ export default function App() {
         <div className="axemet-org px-5 py-3 bg-[#0A2237] border-b border-[#1A3F6F] flex items-center justify-between text-[11px] text-slate-300">
           <div className="flex items-center gap-1.5">
             <Building className="w-3.5 h-3.5 text-[#C8A435]" />
-            <span>Unidade: <strong className="text-white">MATRIZ ALPHA</strong></span>
+            <span>Empresa: <strong className="text-white">{userProfile?.organization || 'Axemet Solution LTDA'}</strong></span>
           </div>
           <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono text-[9px] font-bold">● ONLINE</span>
         </div>
@@ -1919,6 +1691,15 @@ export default function App() {
           <div className="space-y-1">
             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">5. Manufatura</span>
             <button
+              onClick={() => setAppView('projetos')}
+              className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
+                appView === 'projetos' ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+              }`}
+            >
+              <Briefcase className="w-4 h-4 text-cyan-300 shrink-0" />
+              <span>Projetos & Ordens</span>
+            </button>
+            <button
               onClick={() => setAppView('modulo5')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo5' 
@@ -2002,6 +1783,9 @@ export default function App() {
           </div>
 
           {/* Section: ADMIN */}
+          <button onClick={() => setAppView('fornecedores')} className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${appView === 'fornecedores' ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'}`}>
+            <Briefcase className="w-4 h-4 text-amber-300 shrink-0" /><span>Fornecedores & Homologação</span>
+          </button>
           {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
             <div className="space-y-1">
               <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">Configurações & Admin</span>
@@ -2106,6 +1890,7 @@ export default function App() {
               <option value="modulo9">🛒 Compras Triple-Vendor (M9)</option>
             </optgroup>
             <optgroup label="5. MANUFATURA">
+              <option value="projetos">Projetos e Ordens de Fabricação</option>
               <option value="modulo5">🏭 Chão de Fábrica OS (M5)</option>
               <option value="modulo6">✅ Qualidade & RNC (M6)</option>
             </optgroup>
@@ -2139,6 +1924,7 @@ export default function App() {
             <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-1 flex items-center gap-1.5 font-heading">
               {appView === 'modulo11' && '📊 Dashboard 360°'}
               {appView === 'crm' && '💼 Funil de Vendas CRM'}
+              {appView === 'projetos' && 'Projetos e Ordens de Fabricação'}
               {appView === 'home' && '📋 Orçamentos & Custos'}
               {appView === 'editor' && '✍️ Editor de Orçamento'}
               {appView === 'clientes' && '👥 Banco de Clientes'}
@@ -2152,6 +1938,7 @@ export default function App() {
               {appView === 'modulo9' && '🛒 Compras Triple-Vendor'}
               {appView === 'modulo10' && '🔧 Manutenção de Moldes'}
               {appView === 'rh' && '👥 Pessoas, RH & Estrutura'}
+              {appView === 'fornecedores' && 'Fornecedores & Homologação'}
               {appView === 'organizacao' && '⚙️ Configurações de Organização'}
               {appView === 'acessos' && '🔒 Controle de Acessos'}
             </h2>
@@ -2161,7 +1948,7 @@ export default function App() {
           <div className="flex items-center gap-4 text-xs font-semibold">
             <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-              <span className="text-slate-600 font-bold">Unidade Alpha Matrix</span>
+              <span className="text-slate-600 font-bold">{userProfile?.organization || 'Axemet Solution LTDA'}</span>
             </div>
             
             <div className="text-right">
@@ -2916,15 +2703,10 @@ export default function App() {
                         </span>
                         <div className="flex gap-1">
                           <button
-                            onClick={async () => {
-                              const updated = { ...draft, status: 'approved' as const };
-                              setDrafts(prev => prev.map(d => d.id === draft.id ? updated : d));
-                              if (isSupabaseConfigured) await syncSaveBudget(updated);
-                              showToast('Proposta aprovada! Projeto enviado para Produção.', 'success');
-                            }}
+                            onClick={() => { setApprovalDraft(draft); setApprovalProjectCode(`OS-${(draft.reference || draft.id).replace(/[^a-zA-Z0-9]/g, '-')}`); setApprovalDueDate(''); }}
                             className="flex-1 px-1.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[9px] uppercase rounded-md transition text-center"
                           >
-                            Ganho 👍
+                            Aprovar e gerar OS
                           </button>
                           <button
                             onClick={async () => {
@@ -2965,7 +2747,7 @@ export default function App() {
                         </span>
                         <button
                           onClick={() => {
-                            setAppView('producao');
+                            setAppView('projetos');
                             showToast('Acompanhe a fabricação técnica deste molde.');
                           }}
                           className="px-2 py-1 bg-slate-800 hover:bg-slate-900 text-white font-bold text-[9px] uppercase rounded-md transition"
@@ -3234,14 +3016,8 @@ export default function App() {
 
         {/* Módulo 9: Compras e Cotações */}
         {appView === 'modulo9' && (
-          <Modulo9Compras
-            requests={erpRequests}
-            projects={erpProjects}
-            rawStock={erpRawStock}
-            stdStock={erpStdStock}
-            onSaveRequests={setErpRequests}
-            onSaveRawStock={setErpRawStock}
-            onSaveStdStock={setErpStdStock}
+          <PurchasingModule
+            canManage={userProfile?.role === 'admin' || userProfile?.role === 'manager' || !!userProfile?.permissions?.compras?.edit}
             showToast={showToast}
           />
         )}
@@ -3258,9 +3034,23 @@ export default function App() {
 
         {appView === 'rh' && (
           <ModuloRH
-            canManage={userProfile?.role === 'admin' || userProfile?.role === 'manager'}
+            canManage={userProfile?.role === 'admin' || userProfile?.role === 'manager' || !!userProfile?.permissions?.rh?.edit}
             operations={workflowOperations}
             onAssignOperation={handleAssignOperation}
+            showToast={showToast}
+          />
+        )}
+
+        {appView === 'fornecedores' && (
+          <SuppliersModule
+            canManage={userProfile?.role === 'admin' || userProfile?.role === 'manager' || !!userProfile?.permissions?.compras?.edit}
+            showToast={showToast}
+          />
+        )}
+
+        {appView === 'projetos' && (
+          <IndustrialProjectsModule
+            canManage={userProfile?.role === 'admin' || userProfile?.role === 'manager' || !!userProfile?.permissions?.producao?.edit}
             showToast={showToast}
           />
         )}
@@ -3421,7 +3211,7 @@ export default function App() {
                                   setFormSector(prof.sector || 'Comercial');
                                   setFormOrg(profile.organization || 'Unidade Alpha Matrix');
                                   if (prof.permissions) {
-                                    setFormPermissions(prof.permissions);
+                                    setFormPermissions(displayPermissions(prof.permissions));
                                   } else {
                                     // Default permissions based on role
                                     const isAdmin = profile.role === 'admin' || profile.role === 'manager';
@@ -3447,12 +3237,12 @@ export default function App() {
                               <button
                                 onClick={() => {
                                   if (confirm(`Tem certeza que deseja remover o colaborador ${profile.full_name}?`)) {
-                                    setProfilesList(prev => prev.filter(p => p.id !== profile.id));
-                                    showToast('Colaborador removido com sucesso!', 'success');
+                                  handleUpdateProfile(profile.id, { status: 'inactive' });
+                                    showToast('A conta foi desativada. O histórico de auditoria foi preservado.', 'success');
                                   }
                                 }}
                                 className="p-1.5 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition"
-                                title="Remover Usuário"
+                                title="Desativar usuário"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -3698,26 +3488,13 @@ export default function App() {
                             status: formStatus,
                             organization: formOrg,
                             sector: formSector,
-                            permissions: formPermissions,
+                            permissions: normalizePermissions(formPermissions),
                             updated_at: new Date().toISOString()
                           };
                           handleUpdateProfile(selectedProfileForEdit.id, updatedProfile);
                         } else {
-                          // Creating collaborator CRUD
-                          const newId = `colab_${Math.floor(Math.random() * 100000)}`;
-                          const newProfile: any = {
-                            id: newId,
-                            email: formEmail,
-                            full_name: formName,
-                            role: formRole,
-                            status: formStatus,
-                            organization: formOrg,
-                            sector: formSector,
-                            permissions: formPermissions,
-                            updated_at: new Date().toISOString()
-                          };
-                          setProfilesList(prev => [newProfile, ...prev]);
-                          showToast(`Colaborador "${formName}" registrado com sucesso!`, 'success');
+                          // Auth accounts must be created through the Supabase invitation/sign-up flow.
+                          showToast('A conta deve ser criada pelo próprio usuário via cadastro. Após isso, ela aparecerá aqui para aprovação e permissões.', 'info');
                         }
                         setIsUserFormOpen(false);
                       }}
@@ -3778,6 +3555,21 @@ export default function App() {
           <span className="text-[10px] uppercase font-bold tracking-wider">Ajustes</span>
         </button>
       </nav>
+
+      {approvalDraft && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-slate-950/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-[#2d6db2]">Transição comercial → produção</p>
+            <h3 className="mt-1 text-xl font-black text-slate-800">Liberar ordem de fabricação</h3>
+            <p className="mt-2 text-xs leading-relaxed text-slate-500">A aprovação registra o orçamento, gera a OS e abre o projeto em Engenharia. Esta ação fica rastreada no banco.</p>
+            <div className="mt-5 grid gap-4 sm:grid-cols-2">
+              <label className="grid gap-1 text-[10px] font-bold uppercase text-slate-500">Código da OS<input value={approvalProjectCode} onChange={e => setApprovalProjectCode(e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800 outline-none" /></label>
+              <label className="grid gap-1 text-[10px] font-bold uppercase text-slate-500">Prazo de entrega<input type="date" value={approvalDueDate} onChange={e => setApprovalDueDate(e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800 outline-none" /></label>
+            </div>
+            <div className="mt-6 flex justify-end gap-2"><button onClick={() => setApprovalDraft(null)} className="px-4 py-2 text-xs font-bold text-slate-500">Cancelar</button><button onClick={async () => { if (!approvalProjectCode.trim() || !approvalDueDate) return showToast('Informe o código da OS e a data de entrega.', 'error'); try { const updated = {...approvalDraft, status:'approved' as const}; await syncSaveBudget(updated); await approveBudgetToProject(approvalDraft.id, approvalProjectCode.trim(), approvalDueDate, userProfile?.id); setDrafts(prev => prev.map(d => d.id === approvalDraft.id ? updated : d)); setApprovalDraft(null); setAppView('projetos'); showToast(`OS ${approvalProjectCode} criada e liberada para Engenharia.`, 'success'); } catch (error:any) { showToast(error.message || 'Não foi possível criar a ordem de fabricação.', 'error'); } }} className="rh-primary">Confirmar e gerar OS</button></div>
+          </div>
+        </div>
+      )}
 
       {/* Settings Modal Dialog */}
       <SettingsModal
@@ -3853,9 +3645,7 @@ export default function App() {
                   </button>
                 </div>
                 <div className="relative">
-                  <pre className="bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-[10px] overflow-auto max-h-60 text-slate-300 select-all leading-normal whitespace-pre">
-                    {MIGRATION_SQL}
-                  </pre>
+                  <pre className="bg-slate-950 p-4 rounded-xl border border-slate-850 font-mono text-[10px] overflow-auto max-h-60 text-slate-300 select-all leading-normal whitespace-pre">Use as migrações versionadas em supabase/migrations, na ordem cronológica. Elas criam a estrutura corporativa, RLS e o fluxo de produção. Não execute o script legado de demonstração.</pre>
                 </div>
               </div>
             </div>

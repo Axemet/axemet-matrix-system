@@ -1,0 +1,5 @@
+import { isSupabaseConfigured, supabase } from './supabase';
+import type { ConfigParams } from '../types';
+const ensure = () => { if (!isSupabaseConfigured) throw new Error('Supabase não está configurado.'); };
+export async function loadOrganizationSettings(): Promise<Partial<ConfigParams>> { ensure(); const {data,error}=await supabase.from('organization_settings').select('calculation_config').maybeSingle(); if(error)throw error; return (data?.calculation_config || {}) as Partial<ConfigParams>; }
+export async function saveOrganizationSettings(config: ConfigParams) { ensure(); const {data: profile,error:profileError}=await supabase.from('profiles').select('organization_id').eq('id',(await supabase.auth.getUser()).data.user?.id || '').maybeSingle(); if(profileError)throw profileError; if(!profile?.organization_id)throw new Error('Organização não identificada.'); const {error}=await supabase.from('organization_settings').upsert({organization_id:profile.organization_id,calculation_config:config,updated_at:new Date().toISOString()}); if(error)throw error; }

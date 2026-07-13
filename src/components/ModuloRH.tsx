@@ -1,5 +1,6 @@
 import React from 'react';
 import { BadgeCheck, BriefcaseBusiness, Building2, CalendarDays, CheckCircle2, ClipboardList, Factory, GraduationCap, Pencil, Plus, ShieldCheck, Trash2, Users, Wrench, X } from 'lucide-react';
+import { deleteHrRecord, loadHrData, saveEmployee, saveMachine, saveOperationAssignment, saveRole, saveSector } from '../lib/hr';
 type Sector = {
     id: string;
     name: string;
@@ -51,33 +52,6 @@ type Editor = {
     id?: string;
 } | null;
 const uid = (prefix: string) => `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-const load = <T,>(key: string, fallback: T): T => { try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-}
-catch {
-    return fallback;
-} };
-const seedSectors: Sector[] = [
-    { id: 'sec_eng', name: 'Engenharia', code: 'ENG', leader: 'Roberto Lima', shift: 'Administrativo', active: true },
-    { id: 'sec_cnc', name: 'Usinagem CNC', code: 'CNC', leader: 'Marcos Souza', shift: '1º turno', active: true },
-    { id: 'sec_aj', name: 'Ajustagem e Montagem', code: 'AJU', leader: 'Henrique Costa', shift: '1º turno', active: true },
-    { id: 'sec_qual', name: 'Qualidade', code: 'QLD', leader: 'Ana Martins', shift: 'Administrativo', active: true },
-];
-const seedRoles: Role[] = [
-    { id: 'role_cnc', title: 'Operador de CNC', cbo: '7214-05', sectorId: 'sec_cnc', skills: 'Programação CNC, leitura de desenho, metrologia', active: true },
-    { id: 'role_eng', title: 'Projetista de Moldes', cbo: '3186-10', sectorId: 'sec_eng', skills: 'CAD 3D, BOM, revisão técnica', active: true },
-    { id: 'role_aj', title: 'Ajustador de Moldes', cbo: '7250-20', sectorId: 'sec_aj', skills: 'Montagem, tryout, polimento', active: true },
-];
-const seedEmployees: Employee[] = [
-    { id: 'emp_marcos', name: 'Marcos de Souza', roleId: 'role_cnc', sectorId: 'sec_cnc', shift: '1º turno', status: 'Ativo', skills: 'CNC 3 e 5 eixos, CAM', nr12Expiry: '2027-04-30', asoExpiry: '2026-12-20' },
-    { id: 'emp_roberto', name: 'Roberto Lima', roleId: 'role_eng', sectorId: 'sec_eng', shift: 'Administrativo', status: 'Ativo', skills: 'SolidWorks, projetos de injeção', nr12Expiry: '', asoExpiry: '2026-10-12' },
-    { id: 'emp_henrique', name: 'Henrique Costa', roleId: 'role_aj', sectorId: 'sec_aj', shift: '1º turno', status: 'Ativo', skills: 'Ajustagem, montagem, tryout', nr12Expiry: '2026-08-14', asoExpiry: '2026-09-30' },
-];
-const seedMachines: Machine[] = [
-    { id: 'mac_romi', code: 'CNC-01', name: 'CNC ROMI D800', sectorId: 'sec_cnc', type: 'Centro de usinagem', status: 'Em operação', authorizedEmployeeIds: ['emp_marcos'], maintenanceDue: '2026-08-05' },
-    { id: 'mac_ret', code: 'RET-01', name: 'Retífica Plana', sectorId: 'sec_cnc', type: 'Retífica', status: 'Disponível', authorizedEmployeeIds: ['emp_marcos'], maintenanceDue: '2026-09-15' },
-];
 export default function ModuloRH({ canManage, operations, onAssignOperation, showToast }: {
     canManage: boolean;
     operations: Operation[];
@@ -85,48 +59,46 @@ export default function ModuloRH({ canManage, operations, onAssignOperation, sho
     showToast: (message: string, type?: 'success' | 'error' | 'info') => void;
 }) {
     const [tab, setTab] = React.useState<'people' | 'roles' | 'sectors' | 'machines' | 'assignments' | 'compliance'>('people');
-    const [sectors, setSectors] = React.useState<Sector[]>(() => load('rh_sectors', seedSectors));
-    const [roles, setRoles] = React.useState<Role[]>(() => load('rh_roles', seedRoles));
-    const [employees, setEmployees] = React.useState<Employee[]>(() => load('rh_employees', seedEmployees));
-    const [machines, setMachines] = React.useState<Machine[]>(() => load('rh_machines', seedMachines));
+    const [sectors, setSectors] = React.useState<Sector[]>([]);
+    const [roles, setRoles] = React.useState<Role[]>([]);
+    const [employees, setEmployees] = React.useState<Employee[]>([]);
+    const [machines, setMachines] = React.useState<Machine[]>([]);
     const [editor, setEditor] = React.useState<Editor>(null);
     const [form, setForm] = React.useState<Record<string, string>>({});
-    React.useEffect(() => localStorage.setItem('rh_sectors', JSON.stringify(sectors)), [sectors]);
-    React.useEffect(() => localStorage.setItem('rh_roles', JSON.stringify(roles)), [roles]);
-    React.useEffect(() => localStorage.setItem('rh_employees', JSON.stringify(employees)), [employees]);
-    React.useEffect(() => localStorage.setItem('rh_machines', JSON.stringify(machines)), [machines]);
+    const reload = React.useCallback(async () => { try { const data = await loadHrData(); setSectors(data.sectors); setRoles(data.roles); setEmployees(data.employees); setMachines(data.machines); } catch (error: any) { showToast(error.message || 'Não foi possível carregar RH e estrutura.', 'error'); } }, [showToast]);
+    React.useEffect(() => { reload(); }, [reload]);
     const sectorName = (id: string) => sectors.find(s => s.id === id)?.name || 'Não definido';
     const roleName = (id: string) => roles.find(r => r.id === id)?.title || 'Sem função';
     const begin = (kind: NonNullable<Editor>['kind'], item?: any) => { if (!canManage)
         return; setEditor({ kind, id: item?.id }); setForm(item ? { ...item, authorizedEmployeeIds: (item.authorizedEmployeeIds || []).join(',') } : { status: kind === 'employee' ? 'Ativo' : kind === 'machine' ? 'Disponível' : '', active: 'true', sectorId: sectors[0]?.id || '', roleId: roles[0]?.id || '', shift: '1º turno' }); };
     const set = (key: string, value: string) => setForm(current => ({ ...current, [key]: value }));
     const close = () => { setEditor(null); setForm({}); };
-    const save = () => {
+    const save = async () => {
         if (!editor)
             return;
         if (editor.kind === 'employee') {
             if (!form.name?.trim())
                 return showToast('Informe o nome do colaborador.', 'error');
             const entry: Employee = { id: editor.id || uid('emp'), name: form.name.trim(), roleId: form.roleId, sectorId: form.sectorId, shift: form.shift || '1º turno', status: (form.status || 'Ativo') as Employee['status'], skills: form.skills || '', nr12Expiry: form.nr12Expiry || '', asoExpiry: form.asoExpiry || '' };
-            setEmployees(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
+            await saveEmployee(entry); setEmployees(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
         }
         if (editor.kind === 'role') {
             if (!form.title?.trim())
                 return showToast('Informe o nome da função.', 'error');
             const entry: Role = { id: editor.id || uid('role'), title: form.title.trim(), cbo: form.cbo || '', sectorId: form.sectorId, skills: form.skills || '', active: form.active !== 'false' };
-            setRoles(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
+            await saveRole(entry); setRoles(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
         }
         if (editor.kind === 'sector') {
             if (!form.name?.trim() || !form.code?.trim())
                 return showToast('Informe nome e código do setor.', 'error');
             const entry: Sector = { id: editor.id || uid('sec'), name: form.name.trim(), code: form.code.trim().toUpperCase(), leader: form.leader || '', shift: form.shift || 'Administrativo', active: form.active !== 'false' };
-            setSectors(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
+            await saveSector(entry); setSectors(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
         }
         if (editor.kind === 'machine') {
             if (!form.name?.trim() || !form.code?.trim())
                 return showToast('Informe nome e código da máquina.', 'error');
             const entry: Machine = { id: editor.id || uid('mac'), code: form.code.trim().toUpperCase(), name: form.name.trim(), sectorId: form.sectorId, type: form.type || 'Máquina', status: (form.status || 'Disponível') as Machine['status'], authorizedEmployeeIds: (form.authorizedEmployeeIds || '').split(',').map(x => x.trim()).filter(Boolean), maintenanceDue: form.maintenanceDue || '' };
-            setMachines(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
+            await saveMachine(entry); setMachines(list => editor.id ? list.map(x => x.id === editor.id ? entry : x) : [entry, ...list]);
         }
         if (editor.kind === 'assignment') {
             const operation = operations.find(x => `${x.projectId}:${x.operationId}` === form.operation);
@@ -134,17 +106,12 @@ export default function ModuloRH({ canManage, operations, onAssignOperation, sho
             const machine = machines.find(x => x.id === form.machineId);
             if (!operation || !employee)
                 return showToast('Selecione a operação e o colaborador.', 'error');
+            await saveOperationAssignment(operation.project, operation.operationId, employee.id, machine?.id);
             onAssignOperation(operation.projectId, operation.operationId, employee.name, machine?.name || operation.workCenter);
         }
-        close();
-        showToast('Registro salvo e integrado ao fluxo operacional.', 'success');
+        await reload(); close(); showToast('Registro salvo no banco e integrado ao fluxo operacional.', 'success');
     };
-    const remove = (kind: string, id: string) => { if (!canManage || !confirm('Excluir este registro?'))
-        return; if (kind === 'employee')
-        setEmployees(x => x.filter(i => i.id !== id)); if (kind === 'role')
-        setRoles(x => x.filter(i => i.id !== id)); if (kind === 'sector')
-        setSectors(x => x.filter(i => i.id !== id)); if (kind === 'machine')
-        setMachines(x => x.filter(i => i.id !== id)); showToast('Registro removido.', 'info'); };
+    const remove = async (kind: string, id: string) => { if (!canManage || !confirm('Excluir este registro?')) return; try { const table = kind === 'employee' ? 'employee_records' : kind === 'role' ? 'job_roles' : kind === 'sector' ? 'work_sectors' : 'work_machines'; await deleteHrRecord(table, id); await reload(); showToast('Registro removido.', 'info'); } catch (error: any) { showToast(error.message || 'Não foi possível remover o registro.', 'error'); } };
     const expiring = employees.filter(e => [e.nr12Expiry, e.asoExpiry].some(d => d && new Date(d).getTime() < Date.now() + 60 * 86400000));
     const tabs = [{ id: 'people', label: 'Colaboradores', icon: Users }, { id: 'roles', label: 'Funções', icon: BriefcaseBusiness }, { id: 'sectors', label: 'Setores', icon: Building2 }, { id: 'machines', label: 'Máquinas', icon: Factory }, { id: 'assignments', label: 'Atribuições', icon: ClipboardList }, { id: 'compliance', label: 'SST & Capacitações', icon: ShieldCheck }] as const;
     const managerNotice = !canManage && <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs font-semibold text-amber-800">Você tem acesso de consulta. Gestores e administradores podem cadastrar, editar e remover registros.</div>;
@@ -158,7 +125,7 @@ export default function ModuloRH({ canManage, operations, onAssignOperation, sho
     {tab === 'machines' && <Panel title="Máquinas e centros de trabalho" action={canManage ? <button onClick={() => begin('machine')} className="rh-primary"><Plus className="h-4 w-4"/>Nova máquina</button> : undefined}><div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{machines.map(m => <article key={m.id} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"><div className="flex justify-between"><div><p className="font-mono text-[10px] font-bold text-[#2d6db2]">{m.code}</p><h3 className="mt-1 font-bold text-slate-800">{m.name}</h3></div><Actions edit={() => begin('machine', m)} del={() => remove('machine', m.id)} show={canManage}/></div><p className="mt-3 text-xs text-slate-500">{m.type} · {sectorName(m.sectorId)}</p><div className="mt-4 rounded-xl bg-slate-50 p-3 text-[10px] text-slate-500"><p>Operadores autorizados: <b className="text-slate-700">{m.authorizedEmployeeIds.map(id => employees.find(e => e.id === id)?.name).filter(Boolean).join(', ') || 'Nenhum'}</b></p><p className="mt-1">Próx. manutenção: <b className="text-slate-700">{m.maintenanceDue || 'Não definida'}</b></p></div><div className="mt-3"><Status value={m.status}/></div></article>)}</div></Panel>}
     {tab === 'assignments' && <Panel title="Atribuições ao fluxo de trabalho" action={canManage ? <button onClick={() => begin('assignment')} className="rh-primary"><Plus className="h-4 w-4"/>Atribuir colaborador</button> : undefined}><p className="mb-4 text-xs text-slate-500">Atribua pessoas e máquinas às operações do PCP. A atualização é refletida no projeto e no chão de fábrica.</p><div className="overflow-x-auto"><table className="w-full text-left text-xs"><thead><tr className="border-b border-slate-200 text-[10px] uppercase tracking-wider text-slate-400"><th className="p-3">Projeto</th><th>Operação</th><th>Centro de trabalho</th><th>Responsável</th><th>Status</th><th /></tr></thead><tbody>{operations.map(o => <tr key={o.operationId} className="border-b border-slate-100"><td className="p-3 font-semibold text-slate-700">{o.project}</td><td>{o.operation}</td><td>{o.workCenter}</td><td>{o.operator || <span className="text-amber-600">Não atribuído</span>}</td><td><Status value={o.status}/></td><td className="pr-3">{canManage && <button onClick={() => begin('assignment', { operation: `${o.projectId}:${o.operationId}` })} className="rounded-lg p-2 text-[#2d6db2] hover:bg-blue-50" title="Atribuir"><Pencil className="h-4 w-4"/></button>}</td></tr>)}</tbody></table></div></Panel>}
     {tab === 'compliance' && <Panel title="Capacitações, SST e documentos funcionais"><div className="grid gap-4 md:grid-cols-2"><div className="rounded-2xl border border-emerald-100 bg-emerald-50/50 p-5"><GraduationCap className="h-6 w-6 text-emerald-600"/><h3 className="mt-3 font-bold text-slate-800">Capacitações e NR-12</h3><p className="mt-2 text-xs leading-relaxed text-slate-600">Registre certificados, validade e autorização para operar cada máquina. O sistema alerta documentos próximos do vencimento.</p><p className="mt-4 text-xs font-semibold text-emerald-700">{employees.filter(e => e.nr12Expiry).length} colaboradores com NR-12 registrada</p></div><div className="rounded-2xl border border-blue-100 bg-blue-50/50 p-5"><BadgeCheck className="h-6 w-6 text-blue-600"/><h3 className="mt-3 font-bold text-slate-800">ASO e saúde ocupacional</h3><p className="mt-2 text-xs leading-relaxed text-slate-600">Mantenha somente status, validade e aptidão operacional neste painel. Documentos médicos detalhados exigem controle restrito por LGPD.</p><p className="mt-4 text-xs font-semibold text-blue-700">{employees.filter(e => e.asoExpiry).length} ASOs com validade registrada</p></div></div>{expiring.length > 0 && <div className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900"><b>Revisão necessária:</b> {expiring.map(e => e.name).join(', ')} possuem ASO ou NR-12 vencendo nos próximos 60 dias.</div>}</Panel>}
-    {editor && <EditorModal editor={editor} form={form} set={set} save={save} close={close} sectors={sectors} roles={roles} employees={employees} machines={machines} operations={operations}/>} 
+    {editor && <EditorModal editor={editor} form={form} set={set} save={() => save().catch((error: any) => showToast(error.message || 'Não foi possível salvar o registro.', 'error'))} close={close} sectors={sectors} roles={roles} employees={employees} machines={machines} operations={operations}/>} 
   </div>;
 }
 function Kpi({ label, value, alert }: {

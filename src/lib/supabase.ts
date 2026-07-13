@@ -109,6 +109,8 @@ export async function updateProfile(id: string, updates: any) {
     if (updates.role !== undefined) safeUpdates.role = updates.role;
     if (updates.status !== undefined) safeUpdates.status = updates.status;
     if (updates.organization !== undefined) safeUpdates.organization = updates.organization;
+    if (updates.sector !== undefined) safeUpdates.sector = updates.sector;
+    if (updates.permissions !== undefined) safeUpdates.permissions = updates.permissions;
     
     try {
       const { data, error } = await supabase

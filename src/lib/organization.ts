@@ -1,0 +1,5 @@
+import { isSupabaseConfigured, supabase } from './supabase';
+export type OrganizationProfile = { id?: string; name: string; cnpj?: string; phone?: string; email?: string; address?: string; logo_url?: string };
+const ensure=()=>{if(!isSupabaseConfigured)throw new Error('Supabase não está configurado.');};
+export async function getOrganizationProfile():Promise<OrganizationProfile|null>{ensure();const {data,error}=await supabase.from('organizations').select('id,name,cnpj,phone,email,address,logo_url').maybeSingle();if(error)throw error;return data;}
+export async function updateOrganizationProfile(profile:OrganizationProfile){ensure();if(!profile.id)throw new Error('Organização não encontrada.');const {id,...values}=profile;const {error}=await supabase.from('organizations').update({...values,updated_at:new Date().toISOString()}).eq('id',id);if(error)throw error;const {error:profileError}=await supabase.from('profiles').update({organization:profile.name,updated_at:new Date().toISOString()}).eq('organization_id',id);if(profileError)throw profileError;}

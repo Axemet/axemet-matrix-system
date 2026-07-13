@@ -73,6 +73,14 @@ create table if not exists public.operation_assignments (
   unique (organization_id, project_reference, operation_reference)
 );
 
+-- The browser never supplies a tenant id; the database derives it from the authenticated profile.
+alter table public.work_sectors alter column organization_id set default public.organization_for_write();
+alter table public.job_roles alter column organization_id set default public.organization_for_write();
+alter table public.employee_records alter column organization_id set default public.organization_for_write();
+alter table public.work_machines alter column organization_id set default public.organization_for_write();
+alter table public.machine_authorizations alter column organization_id set default public.organization_for_write();
+alter table public.operation_assignments alter column organization_id set default public.organization_for_write();
+
 alter table public.work_sectors enable row level security;
 alter table public.job_roles enable row level security;
 alter table public.employee_records enable row level security;
@@ -80,9 +88,16 @@ alter table public.work_machines enable row level security;
 alter table public.machine_authorizations enable row level security;
 alter table public.operation_assignments enable row level security;
 
-create policy "work_sectors_org" on public.work_sectors for all using (public.is_active_member() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
-create policy "job_roles_org" on public.job_roles for all using (public.is_active_member() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
-create policy "employee_records_org" on public.employee_records for all using (public.is_active_member() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
-create policy "work_machines_org" on public.work_machines for all using (public.is_active_member() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
-create policy "machine_authorizations_org" on public.machine_authorizations for all using (public.is_active_member() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
-create policy "operation_assignments_org" on public.operation_assignments for all using (public.is_active_member() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
+-- Separation of read and write avoids a viewer deleting data through a permissive USING clause.
+create policy "work_sectors_read_org" on public.work_sectors for select using (public.is_active_member() and organization_id = public.current_organization_id());
+create policy "work_sectors_manage_org" on public.work_sectors for all using (public.is_organization_admin() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
+create policy "job_roles_read_org" on public.job_roles for select using (public.is_active_member() and organization_id = public.current_organization_id());
+create policy "job_roles_manage_org" on public.job_roles for all using (public.is_organization_admin() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
+create policy "employee_records_read_org" on public.employee_records for select using (public.is_active_member() and organization_id = public.current_organization_id());
+create policy "employee_records_manage_org" on public.employee_records for all using (public.is_organization_admin() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
+create policy "work_machines_read_org" on public.work_machines for select using (public.is_active_member() and organization_id = public.current_organization_id());
+create policy "work_machines_manage_org" on public.work_machines for all using (public.is_organization_admin() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
+create policy "machine_authorizations_read_org" on public.machine_authorizations for select using (public.is_active_member() and organization_id = public.current_organization_id());
+create policy "machine_authorizations_manage_org" on public.machine_authorizations for all using (public.is_organization_admin() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
+create policy "operation_assignments_read_org" on public.operation_assignments for select using (public.is_active_member() and organization_id = public.current_organization_id());
+create policy "operation_assignments_manage_org" on public.operation_assignments for all using (public.is_organization_admin() and organization_id = public.current_organization_id()) with check (public.is_organization_admin() and organization_id = public.current_organization_id());
