@@ -134,26 +134,18 @@ import {
 function generateNextReference(existingDrafts: BudgetDraft[]): string {
   const currentYear = new Date().getFullYear();
   const yearSuffix = `/${currentYear}`;
-  
-  // Find all drafts for the current year
-  const currentYearDrafts = existingDrafts.filter(d => d.reference && d.reference.endsWith(yearSuffix));
-  
-  if (currentYearDrafts.length === 0) {
-    return `0001${yearSuffix}`;
-  }
-  
-  // Extract numbers and find the maximum
-  const numbers = currentYearDrafts.map(d => {
-    const parts = d.reference!.split('/');
-    const num = parseInt(parts[0], 10);
-    return isNaN(num) ? 0 : num;
-  });
-  
-  const maxNum = Math.max(...numbers, 0);
-  const nextNum = maxNum + 1;
-  
-  // Pad with leading zeros to 4 digits
-  return `${String(nextNum).padStart(4, '0')}${yearSuffix}`;
+  const usedNumbers = new Set(
+    existingDrafts
+      .filter(draft => draft.reference?.endsWith(yearSuffix))
+      .map(draft => Number.parseInt(draft.reference!.split('/')[0], 10))
+      .filter(number => Number.isInteger(number) && number > 0),
+  );
+
+  // Keep the sequence continuous: reuse the first available gap instead of
+  // always using the highest reference plus one.
+  let nextNumber = 1;
+  while (usedNumbers.has(nextNumber)) nextNumber += 1;
+  return `${String(nextNumber).padStart(4, '0')}${yearSuffix}`;
 }
 
 function createDefaultCommercialTerms(): CommercialTerms {
