@@ -158,10 +158,20 @@ function generateNextReference(existingDrafts: BudgetDraft[]): string {
 
 function createDefaultCommercialTerms(): CommercialTerms {
   return {
-    scope: 'Fornecimento e fabricação conforme as especificações técnicas aprovadas pelo cliente. Alterações de escopo serão formalizadas antes da execução.',
+    scope: `Molde Ref. (Cliente fornece)
+Porta Molde em Aço 1045/ Cavidades em Aço 1045.
+Acabamento polido funcional
+Injeção Lateral da peça.
+Extração por pino extrator.
+Cliente fornece produto 3D.
+Cliente fornece O.C.
+Incluso:
+   Projeto 3D da matriz
+   Todo processo de fabricação (compra de material, insumos, usinagem, tornearia, retífica, erosão, montagem, acabamento)
+   Informações complementares estão sujeitas a alteração de valor (ponto de injeção, altura molde, etc)`,
     validityDays: 10,
-    paymentTerms: 'Conforme cronograma financeiro acordado entre as partes.',
-    freightTerms: 'Frete e modalidade de entrega a definir na aprovação comercial.',
+    paymentTerms: 'Entrada 50% pedido / Saldo na entrega do molde',
+    freightTerms: 'FOB',
     billingSchedule: [
       { id: 'billing_signal', description: 'Sinal na aprovação comercial', percent: 40, dueDays: 0 },
       { id: 'billing_delivery', description: 'Saldo na entrega técnica', percent: 60, dueDays: 0 },

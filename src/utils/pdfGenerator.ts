@@ -108,8 +108,21 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   labelValue('Título:', draft.moldDescription || 'Não informado', 110, y, 11, 47);
   y += 6;
   const terms = draft.commercialTerms || {
-    scope: '', validityDays: 10, paymentTerms: 'Conforme condição acordada na aprovação comercial',
-    freightTerms: 'A definir entre as partes antes do faturamento', billingSchedule: [],
+    scope: `Molde Ref. (Cliente fornece)
+Porta Molde em Aço 1045/ Cavidades em Aço 1045.
+Acabamento polido funcional
+Injeção Lateral da peça.
+Extração por pino extrator.
+Cliente fornece produto 3D.
+Cliente fornece O.C.
+Incluso:
+   Projeto 3D da matriz
+   Todo processo de fabricação (compra de material, insumos, usinagem, tornearia, retífica, erosão, montagem, acabamento)
+   Informações complementares estão sujeitas a alteração de valor (ponto de injeção, altura molde, etc)`,
+    validityDays: 10,
+    paymentTerms: 'Entrada 50% pedido / Saldo na entrega do molde',
+    freightTerms: 'FOB',
+    billingSchedule: [],
   };
   labelValue('Validade:', `${terms.validityDays || 10} dias corridos a partir da emissão`, left, y, 15, 58);
   y += 10;
