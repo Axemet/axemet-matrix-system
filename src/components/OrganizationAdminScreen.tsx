@@ -32,8 +32,29 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   const [dragActive, setDragActive] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const loadedRef = React.useRef(false);
 
-  React.useEffect(() => { getOrganizationProfile().then(profile => { if (profile) setConfig(prev => ({...prev, ...profile, logo: profile.logo_url || ''})); }).catch((error:any) => showToast(error.message || 'Não foi possível carregar a organização.', 'error')); }, [showToast]);
+  // Load once only. `showToast` is recreated by the parent on every render;
+  // using it as a dependency was reloading the database while the user typed.
+  React.useEffect(() => {
+    let active = true;
+    getOrganizationProfile()
+      .then(profile => {
+        if (active && profile) setConfig(prev => ({
+          ...prev,
+          id: profile.id,
+          name: profile.name || prev.name,
+          cnpj: profile.cnpj || '',
+          phone: profile.phone || '',
+          email: profile.email || '',
+          address: profile.address || '',
+          logo: profile.logo_url || '',
+        }));
+      })
+      .catch((error:any) => { if (active) showToast(error.message || 'Não foi possível carregar a organização.', 'error'); })
+      .finally(() => { loadedRef.current = true; });
+    return () => { active = false; };
+  }, []);
 
   const persistConfig = async (nextConfig: OrganizationConfig, successMessage = 'Dados da organização salvos no banco corporativo.') => {
     setSaving(true);
@@ -58,6 +79,10 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
   const handleSave = async () => { await persistConfig(config); };
 
   const handleLogoUpload = (file: File) => {
+    if (!loadedRef.current) {
+      showToast('Aguarde os dados da organização terminarem de carregar.', 'info');
+      return;
+    }
     if (!file) return;
     if (!file.type.startsWith('image/')) {
       showToast('Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP).', 'error');
@@ -206,7 +231,7 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
               <Upload className="w-8 h-8 text-slate-400" />
               <div>
                 <p className="text-xs font-bold text-slate-700">Arraste seu logotipo ou clique para buscar</p>
-                <p className="text-[10px] text-slate-400 mt-1">Formatos PNG, JPG ou WEBP (Max. 1MB)</p>
+                <p className="text-[10px] text-slate-400 mt-1">Formatos PNG, JPG ou WEBP (máx. 5MB)</p>
               </div>
             </div>
           )}
@@ -226,11 +251,11 @@ export default function OrganizationAdminScreen({ onBack, showToast }: Organizat
               📏 Dimensões Recomendadas (Padrão Industrial)
             </h4>
             <ul className="text-[10px] text-slate-600 space-y-1 list-disc list-inside leading-relaxed pl-1">
-              <li>Área de impressão no PDF: <strong className="text-orange-950">35 mm × 16 mm</strong></li>
+              <li>Área de impressão no PDF: <strong className="text-orange-950">38 mm × 18 mm</strong></li>
               <li>Proporção ideal: <strong className="text-orange-950">2,2:1 (Horizontal)</strong></li>
               <li>Resolução de arquivo: <strong className="text-orange-950">350px × 160px</strong> (ou equivalente proporcional, ex: 700px × 320px)</li>
               <li>
-                <strong className="text-orange-900">Ajuste Inteligente:</strong> Logotipos com proporções diferentes são centralizados e redimensionados automaticamente dentro da cota máxima de 16 mm de altura ou 35 mm de largura sem sofrer qualquer distorção mecânica ou visual.
+                <strong className="text-orange-900">Ajuste Inteligente:</strong> O PDF preserva a proporção original e centraliza o logo dentro da cota máxima de 18 mm de altura ou 38 mm de largura, sem distorção.
               </li>
             </ul>
           </div>

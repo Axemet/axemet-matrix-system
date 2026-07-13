@@ -29,7 +29,9 @@ import {
   BillingMilestone,
   CashTransaction,
   PurchaseRequest,
-  MaintenanceLog
+  MaintenanceLog,
+  ProposalItem,
+  CommercialTerms
 } from './types';
 import { 
   generateDefaultMaterials, 
@@ -69,6 +71,7 @@ import ThirdPartyTable from './components/ThirdPartyTable';
 import InternalServicesTable from './components/InternalServicesTable';
 import MachiningTimesTable from './components/MachiningTimesTable';
 import QuoteSummary from './components/QuoteSummary';
+import CommercialProposalEditor from './components/CommercialProposalEditor';
 import SettingsModal from './components/SettingsModal';
 import BudgetList from './components/BudgetList';
 import ClientsDatabase from './components/ClientsDatabase';
@@ -148,6 +151,19 @@ function generateNextReference(existingDrafts: BudgetDraft[]): string {
   
   // Pad with leading zeros to 4 digits
   return `${String(nextNum).padStart(4, '0')}${yearSuffix}`;
+}
+
+function createDefaultCommercialTerms(): CommercialTerms {
+  return {
+    scope: 'Fornecimento e fabricação conforme as especificações técnicas aprovadas pelo cliente. Alterações de escopo serão formalizadas antes da execução.',
+    validityDays: 10,
+    paymentTerms: 'Conforme cronograma financeiro acordado entre as partes.',
+    freightTerms: 'Frete e modalidade de entrega a definir na aprovação comercial.',
+    billingSchedule: [
+      { id: 'billing_signal', description: 'Sinal na aprovação comercial', percent: 40, dueDays: 0 },
+      { id: 'billing_delivery', description: 'Saldo na entrega técnica', percent: 60, dueDays: 0 },
+    ],
+  };
 }
 
 function normalizePermissions(source: Record<string, { view: boolean; create: boolean; edit: boolean; delete: boolean; approve: boolean }>) {
@@ -709,9 +725,19 @@ export default function App() {
   const [moldWidth, setMoldWidth] = React.useState(0);
   const [moldLength, setMoldLength] = React.useState(0);
 
+  // A registered client is the source of truth for the commercial contact.
+  // The field remains editable for an exceptional proposal, but never needs
+  // to be retyped when the client is selected or matched by name.
+  React.useEffect(() => {
+    const selected = clients.find(client => client.name.trim().toLocaleLowerCase() === clientName.trim().toLocaleLowerCase());
+    if (selected?.responsible) setContactName(selected.responsible);
+  }, [clientName, clients]);
+
   // Negotiation Discounts
   const [discountPercent, setDiscountPercent] = React.useState<number>(0);
   const [discountValue, setDiscountValue] = React.useState<number>(0);
+  const [proposalItems, setProposalItems] = React.useState<ProposalItem[]>([]);
+  const [commercialTerms, setCommercialTerms] = React.useState<CommercialTerms>(createDefaultCommercialTerms);
 
   // Configuration State
   const [config, setConfig] = React.useState<ConfigParams>({ ...DEFAULT_CONFIG });
@@ -1278,6 +1304,8 @@ export default function App() {
       config,
       discountPercent,
       discountValue,
+      proposalItems,
+      commercialTerms,
       totals,
       machiningTypes,
     };
@@ -1324,6 +1352,8 @@ export default function App() {
     setReference(selected.reference || '');
     setDiscountPercent(selected.discountPercent || 0);
     setDiscountValue(selected.discountValue || 0);
+    setProposalItems(selected.proposalItems || []);
+    setCommercialTerms(selected.commercialTerms || createDefaultCommercialTerms());
     
     // Safety check for legacy or mismatched service structures
     setInternalServices(
@@ -1382,6 +1412,8 @@ export default function App() {
     setMoldLength(0);
     setDiscountPercent(0);
     setDiscountValue(0);
+    setProposalItems([]);
+    setCommercialTerms(createDefaultCommercialTerms());
 
     // Re-initialize materials to defaults
     const cleanMats = generateZeroMaterials(config, rawMaterials);
@@ -1411,6 +1443,8 @@ export default function App() {
     setMoldLength(0);
     setDiscountPercent(0);
     setDiscountValue(0);
+    setProposalItems([]);
+    setCommercialTerms(createDefaultCommercialTerms());
 
     // Re-initialize materials to defaults (clean slate at 0x0)
     const cleanMats = generateZeroMaterials(config, rawMaterials);
@@ -1456,11 +1490,41 @@ export default function App() {
       config,
       discountPercent,
       discountValue,
+      proposalItems,
+      commercialTerms,
       totals,
       machiningTypes,
     };
     void generateBudgetPDF(draft);
     showToast('Proposta comercial do cliente gerada em PDF.');
+  };
+
+  const createFinancialAgreement = (budget: BudgetDraft, projectCode: string, approvalDate: string) => {
+    const proposalTotal = (budget.proposalItems || []).reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+      || Math.max(0, budget.totals.finalPrice - (budget.discountValue || 0));
+    const schedule = budget.commercialTerms?.billingSchedule || [];
+    if (!schedule.length) return;
+    const baseDate = new Date(`${approvalDate}T12:00:00`);
+    const milestones: BillingMilestone[] = schedule
+      .filter(event => event.description.trim() && event.percent > 0)
+      .map(event => {
+        const dueDate = new Date(baseDate);
+        dueDate.setDate(dueDate.getDate() + Math.max(0, event.dueDays || 0));
+        return {
+          id: `agreement_${budget.id}_${event.id}`,
+          projectId: budget.id,
+          projectName: projectCode,
+          description: event.description.trim(),
+          percent: event.percent,
+          value: Math.round(proposalTotal * (event.percent / 100) * 100) / 100,
+          dueDate: dueDate.toISOString().split('T')[0],
+          status: 'pending' as const,
+        };
+      });
+    setErpMilestones(previous => [
+      ...previous.filter(item => item.projectId !== budget.id),
+      ...milestones,
+    ]);
   };
 
   if (!isLoggedIn || forceRecoveryScreen) {
@@ -2492,6 +2556,13 @@ export default function App() {
               {/* Section E: Final Closing commercial summary */}
               {activeTab === 'resumo' && (
                 <section id="secao-resumo-comercial">
+                  <CommercialProposalEditor
+                    items={proposalItems}
+                    terms={commercialTerms}
+                    onItemsChange={setProposalItems}
+                    onTermsChange={setCommercialTerms}
+                  />
+                  <div className="h-6" />
                   <QuoteSummary
                     totals={totals}
                     config={config}
@@ -2521,6 +2592,7 @@ export default function App() {
                     onUpdateClient={handleUpdateClient}
                     onSelectClient={(c) => {
                       setClientName(c.name);
+                      setContactName(c.responsible || '');
                       setActiveTab('dados');
                       showToast(`Cliente "${c.name}" selecionado para o orçamento!`, 'success');
                     }}
@@ -3608,7 +3680,7 @@ export default function App() {
               <label className="grid gap-1 text-[10px] font-bold uppercase text-slate-500">Código da OS<input value={approvalProjectCode} onChange={e => setApprovalProjectCode(e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800 outline-none" /></label>
               <label className="grid gap-1 text-[10px] font-bold uppercase text-slate-500">Prazo de entrega<input type="date" value={approvalDueDate} onChange={e => setApprovalDueDate(e.target.value)} className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5 text-xs text-slate-800 outline-none" /></label>
             </div>
-            <div className="mt-6 flex justify-end gap-2"><button onClick={() => setApprovalDraft(null)} className="px-4 py-2 text-xs font-bold text-slate-500">Cancelar</button><button onClick={async () => { if (!approvalProjectCode.trim() || !approvalDueDate) return showToast('Informe o código da OS e a data de entrega.', 'error'); try { const updated = {...approvalDraft, status:'approved' as const}; await syncSaveBudget(updated); await approveBudgetToProject(approvalDraft.id, approvalProjectCode.trim(), approvalDueDate, userProfile?.id); setDrafts(prev => prev.map(d => d.id === approvalDraft.id ? updated : d)); setApprovalDraft(null); setAppView('projetos'); showToast(`OS ${approvalProjectCode} criada e liberada para Engenharia.`, 'success'); } catch (error:any) { showToast(error.message || 'Não foi possível criar a ordem de fabricação.', 'error'); } }} className="rh-primary">Confirmar e gerar OS</button></div>
+            <div className="mt-6 flex justify-end gap-2"><button onClick={() => setApprovalDraft(null)} className="px-4 py-2 text-xs font-bold text-slate-500">Cancelar</button><button onClick={async () => { if (!approvalProjectCode.trim() || !approvalDueDate) return showToast('Informe o código da OS e a data de entrega.', 'error'); try { const updated = {...approvalDraft, status:'approved' as const}; await syncSaveBudget(updated); await approveBudgetToProject(approvalDraft.id, approvalProjectCode.trim(), approvalDueDate, userProfile?.id); createFinancialAgreement(updated, approvalProjectCode.trim(), new Date().toISOString().split('T')[0]); setDrafts(prev => prev.map(d => d.id === approvalDraft.id ? updated : d)); setApprovalDraft(null); setAppView('projetos'); showToast(`OS ${approvalProjectCode} criada e acordos financeiros lançados.`, 'success'); } catch (error:any) { showToast(error.message || 'Não foi possível criar a ordem de fabricação.', 'error'); } }} className="rh-primary">Confirmar, gerar OS e acordos</button></div>
           </div>
         </div>
       )}

@@ -114,6 +114,7 @@ export default function MoldInputs({
 
   const handleSelectClient = (client: Client) => {
     onClientNameChange(client.name);
+    onContactNameChange(client.responsible || '');
     setShowDropdown(false);
     setShowNewForm(false);
   };
@@ -317,7 +318,7 @@ export default function MoldInputs({
           <div className="md:col-span-3">
             <label className="block text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1">
               <UserCheck className="w-3.5 h-3.5 text-gray-400" />
-              Contato / Responsável
+              Contato / Responsável (preenchido pelo cadastro)
             </label>
             <input
               type="text"

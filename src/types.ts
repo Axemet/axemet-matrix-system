@@ -92,6 +92,8 @@ export interface BudgetDraft {
   config: ConfigParams;
   discountPercent?: number;
   discountValue?: number;
+  proposalItems?: ProposalItem[];
+  commercialTerms?: CommercialTerms;
   totals: {
     materialsTotal: number;
     thirdPartyTotal: number;
@@ -107,6 +109,28 @@ export interface BudgetDraft {
   machiningTypes?: MachiningType[];
   productionStages?: ProductionStage[];
   crmStatus?: 'lead' | 'quoting' | 'negotiating' | 'won' | 'lost' | 'production' | 'delivered';
+}
+
+export interface ProposalItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+export interface CommercialBillingEvent {
+  id: string;
+  description: string;
+  percent: number;
+  dueDays: number;
+}
+
+export interface CommercialTerms {
+  scope: string;
+  validityDays: number;
+  paymentTerms: string;
+  freightTerms: string;
+  billingSchedule: CommercialBillingEvent[];
 }
 
 export interface ProductionStage {

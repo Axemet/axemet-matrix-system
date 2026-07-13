@@ -225,6 +225,8 @@ export function mapDbBudgetToBudget(db: any): BudgetDraft {
     machiningTypes: db.machining_types || [],
     productionStages: configObj.productionStages || undefined,
     crmStatus: configObj.crmStatus || undefined,
+    proposalItems: configObj.proposalItems || undefined,
+    commercialTerms: configObj.commercialTerms || undefined,
   };
 }
 
@@ -233,7 +235,9 @@ export function mapBudgetToDbBudget(b: BudgetDraft) {
   const configWithCrm = {
     ...(b.config || {}),
     productionStages: b.productionStages || [],
-    crmStatus: b.crmStatus || 'quoting'
+    crmStatus: b.crmStatus || 'quoting',
+    proposalItems: b.proposalItems || [],
+    commercialTerms: b.commercialTerms || null,
   };
 
   return {

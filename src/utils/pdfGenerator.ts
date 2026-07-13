@@ -32,7 +32,7 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   let y = 15;
 
   let organization: { name: string; cnpj: string; phone: string; email: string; address: string; logo_url: string } = {
-    name: 'Axemet System', cnpj: '', phone: '', email: '', address: '', logo_url: '' as string | null,
+    name: 'Axemet System', cnpj: '', phone: '', email: '', address: '', logo_url: '',
   };
   try {
     const profile = await getOrganizationProfile();
@@ -62,27 +62,34 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
     text(truncate(value || 'Não informado', max), x + labelWidth, atY, 7.7, { color: navy });
   };
 
-  // Header: official company identity and proposal reference.
-  doc.setFillColor(...navy); doc.roundedRect(left, y, width, 27, 2, 2, 'F');
+  // Header: white background so every organization logo stays clear in print.
+  doc.setFillColor(255, 255, 255); doc.roundedRect(left, y, width, 27, 2, 2, 'F');
+  doc.setDrawColor(203, 213, 225); doc.roundedRect(left, y, width, 27, 2, 2, 'S');
   let logoRendered = false;
   if (organization.logo_url && /^data:image\/(png|jpeg|jpg);base64,/i.test(organization.logo_url)) {
     try {
       const format = /image\/(jpeg|jpg)/i.test(organization.logo_url) ? 'JPEG' : 'PNG';
-      doc.addImage(organization.logo_url, format, left + 5, y + 5, 31, 17);
+      const properties = doc.getImageProperties(organization.logo_url);
+      const ratio = properties.width / properties.height;
+      const maxWidth = 38;
+      const maxHeight = 18;
+      const renderWidth = ratio >= maxWidth / maxHeight ? maxWidth : maxHeight * ratio;
+      const renderHeight = ratio >= maxWidth / maxHeight ? maxWidth / ratio : maxHeight;
+      doc.addImage(organization.logo_url, format, left + 5, y + (27 - renderHeight) / 2, renderWidth, renderHeight);
       logoRendered = true;
     } catch (error) { console.warn('Logo não pôde ser inserido na proposta.', error); }
   }
   if (!logoRendered) {
-    doc.setFillColor(255, 255, 255); doc.roundedRect(left + 5, y + 5, 31, 17, 2, 2, 'F');
+    doc.setFillColor(...light); doc.roundedRect(left + 5, y + 5, 31, 17, 2, 2, 'F');
     text('AX', left + 20.5, y + 16, 13, { align: 'center', bold: true, color: navy });
   }
-  text(organization.name.toUpperCase(), left + 42, y + 9, 10.5, { bold: true, color: [255, 255, 255] });
+  text(organization.name.toUpperCase(), left + 47, y + 9, 10.5, { bold: true, color: navy });
   const contactLines = [organization.cnpj && `CNPJ: ${organization.cnpj}`, organization.phone && `Tel.: ${organization.phone}`, organization.email].filter(Boolean).join('  |  ');
-  text(truncate(contactLines || 'Dados comerciais da empresa', 80), left + 42, y + 14, 6.8, { color: [226, 232, 240] });
-  text(truncate(organization.address || '', 90), left + 42, y + 18.5, 6.6, { color: [226, 232, 240] });
-  text('PROPOSTA COMERCIAL', right - 5, y + 9, 10, { align: 'right', bold: true, color: [255, 255, 255] });
-  text(`Nº ${draft.reference || draft.id.slice(0, 8).toUpperCase()}`, right - 5, y + 15, 7.4, { align: 'right', color: [226, 232, 240] });
-  text(`Emissão: ${new Date(draft.date || Date.now()).toLocaleDateString('pt-BR')}`, right - 5, y + 19.5, 6.8, { align: 'right', color: [226, 232, 240] });
+  text(truncate(contactLines || 'Dados comerciais da empresa', 80), left + 47, y + 14, 6.8, { color: slate });
+  text(truncate(organization.address || '', 90), left + 47, y + 18.5, 6.6, { color: slate });
+  text('PROPOSTA COMERCIAL', right - 5, y + 9, 10, { align: 'right', bold: true, color: navy });
+  text(`Nº ${draft.reference || draft.id.slice(0, 8).toUpperCase()}`, right - 5, y + 15, 7.4, { align: 'right', color: slate });
+  text(`Emissão: ${new Date(draft.date || Date.now()).toLocaleDateString('pt-BR')}`, right - 5, y + 19.5, 6.8, { align: 'right', color: slate });
   y += 34;
 
   text('DADOS DO CLIENTE', left, y, 8.5, { bold: true, color: navy });
@@ -91,7 +98,11 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   labelValue('Contato:', draft.contactName || '', 110, y, 18, 42);
   y += 6;
   labelValue('Referência:', draft.reference || draft.id.slice(0, 8).toUpperCase(), left, y, 22, 45);
-  labelValue('Validade:', '10 dias corridos a partir da emissão', 110, y, 20, 44);
+  const terms = draft.commercialTerms || {
+    scope: '', validityDays: 10, paymentTerms: 'Conforme condição acordada na aprovação comercial',
+    freightTerms: 'A definir entre as partes antes do faturamento', billingSchedule: [],
+  };
+  labelValue('Validade:', `${terms.validityDays || 10} dias corridos a partir da emissão`, 110, y, 20, 44);
   y += 10;
 
   text('ITENS DA PROPOSTA', left, y, 8.5, { bold: true, color: navy });
@@ -103,12 +114,18 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   text('VALOR TOTAL', right - 3, y + 5, 7, { align: 'right', bold: true, color: slate });
   y += 14;
   const product = draft.moldDescription || draft.moldType || 'Molde e ferramental sob encomenda';
-  text('01', left + 3, y, 8, { bold: true });
-  text(truncate(product, 72), left + 22, y, 8, { bold: true });
-  text('1', right - 55, y, 8, { align: 'right' });
-  const negotiatedPrice = Math.max(0, draft.totals.finalPrice - (draft.discountValue || 0));
-  text(formatCurrency(negotiatedPrice), right - 3, y, 8.5, { align: 'right', bold: true });
-  y += 5;
+  const commercialItems = draft.proposalItems && draft.proposalItems.length > 0
+    ? draft.proposalItems
+    : [{ id: 'default', description: product, quantity: 1, unitPrice: Math.max(0, draft.totals.finalPrice - (draft.discountValue || 0)) }];
+  const configuredTotal = commercialItems.reduce((sum, item) => sum + (item.quantity || 0) * (item.unitPrice || 0), 0);
+  const negotiatedPrice = configuredTotal > 0 ? configuredTotal : Math.max(0, draft.totals.finalPrice - (draft.discountValue || 0));
+  commercialItems.forEach((item, index) => {
+    text(String(index + 1).padStart(2, '0'), left + 3, y, 8, { bold: true });
+    text(truncate(item.description || product, 72), left + 22, y, 8, { bold: true });
+    text(String(item.quantity || 0), right - 55, y, 8, { align: 'right' });
+    text(formatCurrency((item.quantity || 0) * (item.unitPrice || 0)), right - 3, y, 8.5, { align: 'right', bold: true });
+    y += 5;
+  });
   const productDetails = [draft.moldType && `Tipo: ${draft.moldType}`, draft.moldingMaterial && `Material injetado: ${draft.moldingMaterial}`].filter(Boolean).join('  •  ');
   if (productDetails) { text(truncate(productDetails, 104), left + 22, y, 6.8, { color: slate }); y += 4; }
   line(y + 2); y += 10;
@@ -122,11 +139,7 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
 
   text('ESCOPO COMERCIAL', left, y, 8.5, { bold: true, color: navy });
   line(y + 2, gold); y += 7;
-  const scope = [
-    `Fornecimento: ${product}.`,
-    'Inclui desenvolvimento e fabricação conforme as especificações aprovadas pelo cliente.',
-    'Alterações de escopo, revisões ou itens não previstos serão avaliados e formalizados previamente.',
-  ];
+  const scope = (terms.scope || `Fornecimento: ${product}.`).split(/\n+/).filter(Boolean);
   scope.forEach((item) => { doc.setFont('helvetica', 'normal'); doc.setFontSize(7.5); doc.setTextColor(...navy); const lines = doc.splitTextToSize(`• ${item}`, width - 4); doc.text(lines, left + 2, y); y += lines.length * 4.1; });
   y += 4;
 
@@ -134,8 +147,8 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
   line(y + 2, gold); y += 8;
   const conditions = [
     ['Prazo de entrega', draft.deliveryTime || 'A confirmar após aprovação técnica'],
-    ['Pagamento', 'Conforme condição acordada na aprovação comercial'],
-    ['Frete', 'A definir entre as partes antes do faturamento'],
+    ['Pagamento', terms.paymentTerms || 'Conforme condição acordada na aprovação comercial'],
+    ['Frete', terms.freightTerms || 'A definir entre as partes antes do faturamento'],
     ['Observações', draft.observations || 'Nenhuma observação adicional informada.'],
   ];
   conditions.forEach(([label, value]) => {
