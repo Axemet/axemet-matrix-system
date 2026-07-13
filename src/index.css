@@ -139,6 +139,47 @@ body {
 .rh-primary:hover { background: #124a80; transform: translateY(-1px); }
 .rh-tabs::-webkit-scrollbar { display: none; }
 
+/* Command-deck treatment: deliberate hierarchy instead of prototype panels. */
+.axemet-shell { min-height: 100dvh; }
+.axemet-workspace { min-width: 0; }
+.axemet-main { max-width: 1440px !important; padding-inline: clamp(20px, 3vw, 48px) !important; }
+.axemet-main > .space-y-6 { gap: 1.5rem; }
+.axemet-main .rounded-2xl.border.bg-white {
+  border-color: rgba(204, 218, 230, .84);
+  box-shadow: 0 12px 28px rgba(20, 46, 70, .055), 0 1px 1px rgba(20, 46, 70, .04);
+}
+.axemet-main .rounded-2xl.border.bg-white:hover { box-shadow: 0 16px 34px rgba(20, 46, 70, .075), 0 1px 1px rgba(20, 46, 70, .04); }
+.axemet-main table thead { background: #f6f9fc; }
+.axemet-main table th { font-weight: 800; letter-spacing: .075em; color: #72849a; }
+.axemet-main button { transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease; }
+.axemet-main button:active { transform: translateY(1px); }
+.axemet-main input, .axemet-main select, .axemet-main textarea {
+  border-color: #d5e0ea !important;
+  background-color: #fbfdff !important;
+  border-radius: 10px !important;
+}
+.axemet-main input:hover, .axemet-main select:hover, .axemet-main textarea:hover { border-color: #a9c2d7 !important; }
+.axemet-topbar { padding-inline: clamp(20px, 3vw, 48px) !important; }
+.axemet-sidebar { width: 18rem !important; padding-bottom: 18px; }
+.axemet-sidebar .space-y-4 { display: flex; flex-direction: column; gap: 18px !important; }
+.axemet-sidebar span[class*='tracking-widest'] { letter-spacing: .13em; }
+.axemet-sidebar button {
+  min-height: 38px;
+  border: 1px solid transparent;
+}
+.axemet-sidebar button:hover { border-color: rgba(166, 202, 232, .14); background-color: rgba(95, 154, 203, .12) !important; }
+.axemet-sidebar button[class*='bg-[#2563A8]'] { background: linear-gradient(100deg, #1e5f9b, #17466f) !important; border-color: rgba(217, 181, 77, .27); }
+.axemet-sidebar .axemet-org { margin: 10px 12px 4px; border: 1px solid rgba(148, 191, 221, .12); border-radius: 12px; }
+.rh-hero { border-radius: 22px; padding: clamp(24px, 3vw, 36px) !important; position: relative; overflow: hidden; }
+.rh-hero::after { content: ''; position: absolute; width: 290px; height: 290px; right: -130px; bottom: -175px; border: 1px solid rgba(213,173,74,.22); border-radius: 50%; box-shadow: 0 0 0 28px rgba(213,173,74,.04), 0 0 0 56px rgba(213,173,74,.025); }
+.rh-hero > * { position: relative; z-index: 1; }
+.rh-primary { border-radius: 10px; min-height: 40px; padding-inline: 1rem; background: linear-gradient(105deg, #236fae, #174c7a); }
+
+@media (min-width: 1280px) {
+  .axemet-main { padding-top: 38px; }
+  .axemet-sidebar { width: 19rem !important; }
+}
+
 /* Axemet System — premium industrial entry experience */
 .ax-login { background: #eef3f7; }
 .ax-login-showcase { min-height: 100vh; background: radial-gradient(circle at 82% 18%, rgba(66, 153, 180, .27), transparent 33%), linear-gradient(145deg, #071526 0%, #0b2942 52%, #113f5a 100%); }

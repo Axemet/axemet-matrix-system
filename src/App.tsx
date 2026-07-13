@@ -472,6 +472,33 @@ export default function App() {
     localStorage.setItem('erp_tools', JSON.stringify(erpTools));
   }, [erpTools]);
 
+  // The Google AI Studio prototype persisted illustrative records in each browser.
+  // They are not operational data and must never reappear in a production workspace.
+  // Real records now live in Supabase; this one-time migration clears only legacy keys.
+  React.useEffect(() => {
+    const cleanupKey = 'axemet_legacy_demo_cleanup_v1';
+    if (localStorage.getItem(cleanupKey) === 'done') return;
+
+    [
+      'erp_projects', 'erp_raw_stock', 'erp_std_stock', 'erp_audits', 'erp_rncs',
+      'erp_milestones', 'erp_transactions', 'erp_requests', 'erp_maint_logs', 'erp_tools',
+      'orcamolde_drafts', 'orcamolde_clients', 'orcamolde_raw_materials',
+      'orcamolde_machining_types', 'orcamolde_internal_services', 'orcamolde_third_party_items',
+    ].forEach((key) => localStorage.removeItem(key));
+
+    setErpProjects([]);
+    setErpRawStock([]);
+    setErpStdStock([]);
+    setErpAudits([]);
+    setErpRncs([]);
+    setErpMilestones([]);
+    setErpTransactions([]);
+    setErpRequests([]);
+    setErpMaintLogs([]);
+    setErpTools([]);
+    localStorage.setItem(cleanupKey, 'done');
+  }, []);
+
   const handleSaveProject = (updatedProj: MatrixProject) => {
     setErpProjects(prev => {
       const exists = prev.some(p => p.id === updatedProj.id);
@@ -550,8 +577,8 @@ export default function App() {
   const [formEmail, setFormEmail] = React.useState('');
   const [formRole, setFormRole] = React.useState<'admin' | 'manager' | 'operator' | 'viewer'>('viewer');
   const [formStatus, setFormStatus] = React.useState<'active' | 'pending' | 'inactive'>('pending');
-  const [formSector, setFormSector] = React.useState('Comercial');
-  const [formOrg, setFormOrg] = React.useState('Unidade Alpha Matrix');
+  const [formSector, setFormSector] = React.useState('');
+  const [formOrg, setFormOrg] = React.useState('');
   const [formPermissions, setFormPermissions] = React.useState<Record<string, { view: boolean, create: boolean, edit: boolean, delete: boolean, approve: boolean }>>({
     'Comercial': { view: true, create: true, edit: false, delete: false, approve: false },
     'Engenharia': { view: true, create: false, edit: false, delete: false, approve: false },
@@ -668,7 +695,7 @@ export default function App() {
   const [contactName, setContactName] = React.useState('');
   const [moldType, setMoldType] = React.useState('');
   const [moldingMaterial, setMoldingMaterial] = React.useState('');
-  const [productQuantity, setProductQuantity] = React.useState<number>(1000);
+  const [productQuantity, setProductQuantity] = React.useState<number>(0);
   const [deliveryTime, setDeliveryTime] = React.useState('');
   const [observations, setObservations] = React.useState('');
   const [status, setStatus] = React.useState<'draft' | 'pending' | 'approved' | 'rejected'>('draft');
@@ -1552,7 +1579,7 @@ export default function App() {
       <aside className="axemet-sidebar hidden md:flex flex-col w-72 bg-[#0F2A43] text-slate-100 border-r border-[#1A3F6F] shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
         {/* Brand/Logo */}
         <div className="axemet-brand p-5 border-b border-[#1A3F6F] flex items-center gap-3 bg-[#0B1E30]">
-          <img src="/axemet-system-logo.png" alt="Axemet System" className="w-10 h-10 rounded-xl object-cover border border-[#C8A435] shadow-lg" />
+          <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="w-10 h-10 rounded-xl object-cover border border-[#C8A435] shadow-lg" />
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase mt-1 leading-none">
@@ -1839,7 +1866,7 @@ export default function App() {
       <header className="md:hidden bg-[#0F2A43] border-b-2 border-[#C8A435] text-white sticky top-0 z-45 p-4 flex flex-col gap-3 shadow-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/axemet-system-logo.png" alt="Axemet System" className="w-8 h-8 rounded-lg object-cover border border-[#C8A435]" />
+            <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="w-8 h-8 rounded-lg object-cover border border-[#C8A435]" />
             <div>
               <span className="text-[8px] font-black tracking-widest text-[#C8A435] uppercase block leading-none">AXEMET SYSTEM</span>
               <span className="text-[10px] font-black text-slate-100 uppercase block leading-none">Gestão Industrial</span>
@@ -3056,6 +3083,7 @@ export default function App() {
         {/* Módulo 11: Business Intelligence */}
         {appView === 'modulo11' && (
           <Modulo11BI
+            onNavigate={setAppView}
             projects={erpProjects}
             transactions={erpTransactions}
             requests={erpRequests}

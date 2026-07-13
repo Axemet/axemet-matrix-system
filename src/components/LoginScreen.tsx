@@ -227,7 +227,7 @@ export default function LoginScreen({ onLogin }: LoginScreenProps) {
         
         {/* Top brand */}
         <div className="relative z-10 flex items-center gap-3">
-          <img src="/axemet-system-logo.png" alt="Axemet System" className="h-12 w-12 rounded-xl object-cover shadow-2xl ring-1 ring-[#C8A435]/50" />
+          <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="h-12 w-12 rounded-xl object-cover shadow-2xl ring-1 ring-[#C8A435]/50" />
           <div className="flex flex-col">
             <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
             <span className="text-xs font-bold text-white uppercase mt-1 tracking-wider leading-none">
