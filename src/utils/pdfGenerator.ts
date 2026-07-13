@@ -101,17 +101,17 @@ export async function generateBudgetPDF(draft: BudgetDraft): Promise<void> {
 
   text('DADOS DO CLIENTE', left, y, 8.5, { bold: true, color: navy });
   line(y + 2, gold); y += 8;
-  labelValue('Cliente:', draft.clientName, left, y, 18, 62);
-  labelValue('Contato:', draft.contactName || '', 110, y, 18, 42);
+  labelValue('Cliente:', draft.clientName, left, y, 13, 62);
+  labelValue('Contato:', draft.contactName || '', 110, y, 13, 42);
   y += 6;
-  labelValue('Referência:', draft.reference || draft.id.slice(0, 8).toUpperCase(), left, y, 22, 45);
-  labelValue('Título:', draft.moldDescription || 'Não informado', 110, y, 13, 47);
+  labelValue('Referência:', draft.reference || draft.id.slice(0, 8).toUpperCase(), left, y, 16, 45);
+  labelValue('Título:', draft.moldDescription || 'Não informado', 110, y, 11, 47);
   y += 6;
   const terms = draft.commercialTerms || {
     scope: '', validityDays: 10, paymentTerms: 'Conforme condição acordada na aprovação comercial',
     freightTerms: 'A definir entre as partes antes do faturamento', billingSchedule: [],
   };
-  labelValue('Validade:', `${terms.validityDays || 10} dias corridos a partir da emissão`, left, y, 20, 58);
+  labelValue('Validade:', `${terms.validityDays || 10} dias corridos a partir da emissão`, left, y, 15, 58);
   y += 10;
 
   text('ITENS DA PROPOSTA', left, y, 8.5, { bold: true, color: navy });
