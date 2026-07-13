@@ -19,6 +19,7 @@ interface QuoteSummaryProps {
   discountValue?: number;
   onDiscountValueChange?: (val: number) => void;
   proposalTotal?: number;
+  hasCompleteTechnicalMemory?: boolean;
 }
 
 export default function QuoteSummary({ 
@@ -31,9 +32,12 @@ export default function QuoteSummary({
   discountValue = 0,
   onDiscountValueChange,
   proposalTotal,
+  hasCompleteTechnicalMemory = true,
 }: QuoteSummaryProps) {
   const displayTotal = proposalTotal && proposalTotal > 0 ? proposalTotal : totals.finalPrice;
   const hasConsolidatedProposal = !!proposalTotal && proposalTotal > 0;
+  const commissionAmount = displayTotal * (config.commission / 100);
+  const taxAmount = displayTotal * (config.tax / 100);
   return (
     <div className="bg-white rounded-xl shadow-xs border border-gray-100 overflow-hidden">
       
@@ -163,14 +167,14 @@ export default function QuoteSummary({
               <div className="flex justify-between text-gray-600">
                 <span>Comissão ({formatNumber(config.commission, 1)}%):</span>
                 <span className="font-mono font-bold text-gray-900">
-                  {formatCurrency(totals.commissionAmount)}
+                  {formatCurrency(commissionAmount)}
                 </span>
               </div>
 
               <div className="flex justify-between text-gray-600">
                 <span>Impostos ({formatNumber(config.tax, 1)}%):</span>
                 <span className="font-mono font-bold text-gray-900">
-                  {formatCurrency(totals.taxAmount)}
+                  {formatCurrency(taxAmount)}
                 </span>
               </div>
 
@@ -180,7 +184,7 @@ export default function QuoteSummary({
                   Markup Efetivo:
                 </span>
                 <span className="font-mono font-black text-indigo-700">
-                  {formatNumber(totals.effectiveMarkup, 4)}x
+                  {hasCompleteTechnicalMemory ? `${formatNumber(totals.effectiveMarkup, 4)}x` : 'Recalcule os itens'}
                 </span>
               </div>
             </div>
@@ -307,7 +311,7 @@ export default function QuoteSummary({
           <div className="text-[10px] text-gray-500 space-y-1">
             <p className="font-bold text-gray-700">Memória de Cálculo de Fechamento:</p>
             <p>
-              1. <strong>Custo Total Multiplicado</strong> = <code className="font-mono bg-white px-1 py-0.5 rounded border border-gray-200">[ (Materiais + Terceiros + Serviços Internos) × Multiplicador ]</code>.
+              1. <strong>Custo Técnico</strong> = <code className="font-mono bg-white px-1 py-0.5 rounded border border-gray-200">[ (Materiais + Terceiros) × Multiplicador ] + Serviços Internos</code>.
             </p>
             <p>
               2. <strong>Preço Final de Venda</strong> = <code className="font-mono bg-white px-1 py-0.5 rounded border border-gray-200">Custo Total Multiplicado ÷ (1 - {config.commission/100} - {config.tax/100})</code>.

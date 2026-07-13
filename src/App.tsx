@@ -1101,6 +1101,30 @@ export default function App() {
   const totals = calculateTotals(materials, thirdPartyItems, internalServices, config);
   const proposalTotal = proposalItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
   const closingPrice = proposalTotal > 0 ? proposalTotal : totals.finalPrice;
+  const hasCompleteTechnicalMemory = proposalItems.length > 0 && proposalItems.every(item => item.technicalSnapshot?.totals);
+  const summaryTotals = React.useMemo(() => {
+    if (!hasCompleteTechnicalMemory) return totals;
+    const aggregate = proposalItems.reduce((acc, item) => {
+      const itemTotals = item.technicalSnapshot!.totals!;
+      const quantity = Number(item.quantity) || 0;
+      acc.materialsTotal += itemTotals.materialsTotal * quantity;
+      acc.thirdPartyTotal += itemTotals.thirdPartyTotal * quantity;
+      acc.internalTotal += itemTotals.internalTotal * quantity;
+      acc.baseCost += itemTotals.baseCost * quantity;
+      acc.costWithMultiplier += itemTotals.costWithMultiplier * quantity;
+      return acc;
+    }, { materialsTotal: 0, thirdPartyTotal: 0, internalTotal: 0, baseCost: 0, costWithMultiplier: 0 });
+    const commissionAmount = closingPrice * (config.commission / 100);
+    const taxAmount = closingPrice * (config.tax / 100);
+    return {
+      ...aggregate,
+      totalBeforeTaxes: aggregate.costWithMultiplier,
+      commissionAmount,
+      taxAmount,
+      finalPrice: closingPrice,
+      effectiveMarkup: aggregate.baseCost > 0 ? closingPrice / aggregate.baseCost : 0,
+    };
+  }, [closingPrice, config.commission, config.tax, hasCompleteTechnicalMemory, proposalItems, totals]);
 
   const handleAddCurrentTechnicalItem = () => {
     if (!moldDescription.trim()) {
@@ -2659,9 +2683,10 @@ export default function App() {
                   />
                   <div className="h-6" />
                   <QuoteSummary
-                    totals={totals}
+                    totals={summaryTotals}
                     config={config}
                     proposalTotal={closingPrice}
+                    hasCompleteTechnicalMemory={hasCompleteTechnicalMemory}
                     onSaveDraft={handleSaveDraft}
                     onExportPDF={handleExportPDF}
                     discountPercent={discountPercent}
