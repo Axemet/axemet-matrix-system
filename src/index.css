@@ -157,7 +157,7 @@ h1, h2, h3, h4, h5, h6 {
 /* These light-designed cards are forced to dark panels above.
    Recolor their light-theme text/accents so everything stays visible (WCAG AA). */
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600,
+  .text-slate-950, .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600,
   .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500
 ) {
   color: var(--ax-text-main) !important;
@@ -214,6 +214,29 @@ h1, h2, h3, h4, h5, h6 {
 ) {
   background-color: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Light-themed cards OUTSIDE force-dark panels: the body default is
+   --ax-text-main (white), which creates white-on-white on bg-white surfaces.
+   Force dark text so every white card stays readable.
+   Inside force-dark panels the more-specific rules below override this. */
+.axemet-main .bg-white {
+  color: #1e293b;
+}
+.axemet-main .bg-white :is(
+  .text-slate-400, .text-slate-500, .text-gray-400, .text-gray-500
+) {
+  color: #64748b;
+}
+/* Counter: inner .bg-white cards inside force-dark panels sit on dark-remapped
+   backgrounds, so they must keep light text.  Higher specificity wins. */
+.axemet-main .rounded-2xl.border.bg-white .bg-white {
+  color: var(--ax-text-main);
+}
+.axemet-main .rounded-2xl.border.bg-white .bg-white :is(
+  .text-slate-400, .text-slate-500, .text-gray-400, .text-gray-500
+) {
+  color: var(--ax-text-muted);
 }
 
 /* Forms: responsive base for ALL inputs (works in light & dark contexts) */
