@@ -1767,36 +1767,36 @@ export default function App() {
   }
 
   return (
-    <div className="axemet-shell min-h-screen bg-slate-100 text-slate-900 font-sans antialiased flex flex-col md:flex-row">
+    <div className="axemet-shell min-h-screen bg-[#040710] text-slate-100 font-sans antialiased flex flex-col md:flex-row">
       
       {/* Toast Notification Banner */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border bg-slate-900 text-white animate-fadeIn">
+        <div className="fixed bottom-6 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl border border-slate-800 bg-[#0d1423] text-slate-200 animate-fadeIn">
           <div className="w-2 h-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
           <span className="text-xs font-semibold">{toastMessage.text}</span>
         </div>
       )}
 
       {/* DESKTOP INDUSTRIAL FUNNEL SIDEBAR */}
-      <aside className="axemet-sidebar hidden md:flex flex-col w-72 bg-[#0F2A43] text-slate-100 border-r border-[#1A3F6F] shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
+      <aside className="axemet-sidebar hidden md:flex flex-col w-72 bg-[#080c17]/95 text-slate-100 border-r border-slate-800 shrink-0 select-none max-h-screen overflow-y-auto sticky top-0">
         {/* Brand/Logo */}
-        <div className="axemet-brand p-5 border-b border-[#1A3F6F] flex items-center gap-3 bg-[#0B1E30]">
-          <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="w-10 h-10 rounded-xl object-cover border border-[#C8A435] shadow-lg" />
+        <div className="axemet-brand p-5 border-b border-slate-800 flex items-center gap-3 bg-slate-950/80">
+          <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="w-10 h-10 rounded-xl object-cover border border-[var(--ax-accent)] shadow-lg" />
           <div className="flex flex-col">
-            <span className="text-[10px] font-black tracking-widest text-[#C8A435] uppercase font-mono leading-none">AXEMET SYSTEM</span>
-            <span className="text-[11px] font-bold tracking-wider text-slate-200 uppercase mt-1 leading-none">
+            <span className="text-[10px] font-black tracking-widest text-[var(--ax-accent)] uppercase font-mono leading-none">AXEMET SYSTEM</span>
+            <span className="text-[11px] font-bold tracking-wider text-slate-300 uppercase mt-1 leading-none">
               Gestão Industrial
             </span>
           </div>
         </div>
 
         {/* Current Org Indicator */}
-        <div className="axemet-org px-5 py-3 bg-[#0A2237] border-b border-[#1A3F6F] flex items-center justify-between text-[11px] text-slate-300">
+        <div className="axemet-org px-5 py-3 bg-slate-900/40 border-b border-slate-800/80 flex items-center justify-between text-[11px] text-slate-400">
           <div className="flex items-center gap-1.5">
-            <Building className="w-3.5 h-3.5 text-[#C8A435]" />
-            <span>Empresa: <strong className="text-white">{userProfile?.organization || 'Axemet Solution LTDA'}</strong></span>
+            <Building className="w-3.5 h-3.5 text-[var(--ax-accent)]" />
+            <span>Empresa: <strong className="text-slate-200">{userProfile?.organization || 'Axemet Solution LTDA'}</strong></span>
           </div>
-          <span className="px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 font-mono text-[9px] font-bold">● ONLINE</span>
+          <span className="px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-900/30 text-emerald-400 font-mono text-[9px] font-bold">● ONLINE</span>
         </div>
 
         {/* Funnel Sections */}
@@ -1804,68 +1804,68 @@ export default function App() {
           
           {/* Section: VISÃO GERAL */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-[#C8A435] uppercase tracking-widest block px-2 mb-1.5 opacity-80">Visão Geral</span>
+            <span className="text-[9px] font-black text-[var(--ax-accent)] uppercase tracking-widest block px-2 mb-1.5 opacity-80">Visão Geral</span>
             <button
               onClick={() => setAppView('modulo11')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo11' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Activity className="w-4 h-4 text-[#C8A435] shrink-0" />
+              <Activity className="w-4 h-4 text-[var(--ax-accent)] shrink-0" />
               <span>Dashboard 360°</span>
-              <span className="ml-auto text-[8px] px-1 py-0.2 rounded bg-[#0B1E30] text-slate-300 font-mono">Real-time</span>
+              <span className="ml-auto text-[8px] px-1 py-0.2 rounded bg-slate-900 border border-slate-800 text-slate-400 font-mono">Real-time</span>
             </button>
           </div>
 
           {/* Section: COMERCIAL */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">1. Comercial & Vendas</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">1. Comercial & Vendas</span>
             <button
               onClick={() => setAppView('crm')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'crm' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <TrendingUp className="w-4 h-4 text-orange-400 shrink-0" />
+              <TrendingUp className="w-4 h-4 text-amber-500 shrink-0" />
               <span>Funil de Vendas CRM</span>
             </button>
             <button
               onClick={() => setAppView('home')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'home' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <FileText className="w-4 h-4 text-indigo-400 shrink-0" />
+              <FileText className="w-4 h-4 text-amber-500 shrink-0" />
               <span>Orçamentos & Custos</span>
             </button>
             <button
               onClick={() => setAppView('clientes')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'clientes' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Users className="w-4 h-4 text-sky-400 shrink-0" />
+              <Users className="w-4 h-4 text-amber-500 shrink-0" />
               <span>Banco de Clientes</span>
             </button>
           </div>
 
           {/* Section: ENGENHARIA */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">2. Engenharia</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">2. Engenharia</span>
             <button
               onClick={() => setAppView('modulo2')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo2' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
               <Cpu className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1875,29 +1875,29 @@ export default function App() {
 
           {/* Section: PCP */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">3. Planejamento PCP</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">3. Planejamento PCP</span>
             <button
               onClick={() => setAppView('modulo3')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo3' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Clock className="w-4 h-4 text-yellow-400 shrink-0" />
+              <Clock className="w-4 h-4 text-yellow-555 shrink-0 text-amber-450" />
               <span>Gantt & Programação</span>
             </button>
           </div>
 
           {/* Section: ALMOXARIFADO */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">4. Suprimentos</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">4. Suprimentos</span>
             <button
               onClick={() => setAppView('modulo4')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo4' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
               <Layers className="w-4 h-4 text-teal-400 shrink-0" />
@@ -1907,44 +1907,46 @@ export default function App() {
               onClick={() => setAppView('modulo9')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo9' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Briefcase className="w-4 h-4 text-indigo-400 shrink-0" />
+              <Briefcase className="w-4 h-4 text-teal-400 shrink-0" />
               <span>Compras Triple-Vendor</span>
             </button>
           </div>
 
           {/* Section: CHÃO DE FÁBRICA */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">5. Manufatura</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">5. Manufatura</span>
             <button
               onClick={() => setAppView('projetos')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                appView === 'projetos' ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                appView === 'projetos' 
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Briefcase className="w-4 h-4 text-cyan-300 shrink-0" />
+              <Briefcase className="w-4 h-4 text-sky-400 shrink-0" />
               <span>Projetos & Ordens</span>
             </button>
             <button
               onClick={() => setAppView('modulo5')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo5' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Activity className="w-4 h-4 text-blue-400 shrink-0" />
+              <Activity className="w-4 h-4 text-sky-450 shrink-0" />
               <span>Chão de Fábrica OS</span>
             </button>
             <button
               onClick={() => setAppView('modulo6')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo6' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
               <Check className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -1954,56 +1956,56 @@ export default function App() {
 
           {/* Section: CONTROLADORIA */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">6. Controladoria</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">6. Controladoria</span>
             <button
               onClick={() => setAppView('modulo7')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo7' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <DollarSign className="w-4 h-4 text-amber-500 shrink-0" />
+              <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Custos Radar (Orç vs Real)</span>
             </button>
             <button
               onClick={() => setAppView('modulo8')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo8' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Save className="w-4 h-4 text-green-400 shrink-0" />
+              <Save className="w-4 h-4 text-emerald-400 shrink-0" />
               <span>Financeiro & DRE</span>
             </button>
           </div>
 
           {/* Section: PÓS-ENTREGA */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">7. Operação em Campo</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">7. Operação em Campo</span>
             <button
               onClick={() => setAppView('modulo10')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'modulo10' 
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
-              <Settings className="w-4 h-4 text-orange-400 shrink-0" />
+              <Settings className="w-4 h-4 text-purple-400 shrink-0" />
               <span>Manutenção & Ciclos</span>
             </button>
           </div>
 
           {/* Section: PESSOAS & ESTRUTURA */}
           <div className="space-y-1">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">8. Pessoas & Estrutura</span>
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">8. Pessoas & Estrutura</span>
             <button
               onClick={() => setAppView('rh')}
               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                 appView === 'rh'
-                  ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]'
-                  : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                  ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]'
+                  : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
               }`}
             >
               <Users className="w-4 h-4 text-violet-300 shrink-0" />
@@ -2012,18 +2014,18 @@ export default function App() {
           </div>
 
           {/* Section: ADMIN */}
-          <button onClick={() => setAppView('fornecedores')} className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${appView === 'fornecedores' ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'}`}>
+          <button onClick={() => setAppView('fornecedores')} className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${appView === 'fornecedores' ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}>
             <Briefcase className="w-4 h-4 text-amber-300 shrink-0" /><span>Fornecedores & Homologação</span>
           </button>
           {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
             <div className="space-y-1">
-              <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-2 mb-1.5">Configurações & Admin</span>
+              <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5 font-mono">Configurações & Admin</span>
               <button
                 onClick={() => setAppView('organizacao')}
                 className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                   appView === 'organizacao' 
-                    ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                    : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                    ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                 }`}
               >
                 <Building className="w-4 h-4 text-indigo-400 shrink-0" />
@@ -2033,11 +2035,11 @@ export default function App() {
                 onClick={() => setAppView('acessos')}
                 className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
                   appView === 'acessos' 
-                    ? 'bg-[#2563A8] text-white shadow-md border-l-4 border-[#C8A435]' 
-                    : 'text-slate-300 hover:bg-[#1A3F6F]/50 hover:text-white'
+                    ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
+                    : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
                 }`}
               >
-                <Shield className="w-4 h-4 text-rose-400 shrink-0" />
+                <Shield className="w-4 h-4 text-rose-450 shrink-0 text-red-400" />
                 <span>Gestão de Acessos</span>
               </button>
             </div>
@@ -2046,25 +2048,25 @@ export default function App() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t border-[#1A3F6F] space-y-2 bg-[#0B1E30] text-[11px] font-bold">
+        <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950/80 text-[11px] font-bold">
           <button
             onClick={handleLogout}
             className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg transition flex items-center gap-2 cursor-pointer"
           >
-            <LogOut className="w-4 h-4 text-red-500" />
+            <LogOut className="w-4 h-4 text-red-500 animate-pulse" />
             Sair do ERP
           </button>
         </div>
       </aside>
 
       {/* MOBILE RESPONSIVE HEADER & SELECTOR */}
-      <header className="md:hidden bg-[#0F2A43] border-b-2 border-[#C8A435] text-white sticky top-0 z-45 p-4 flex flex-col gap-3 shadow-md">
+      <header className="md:hidden bg-[#080c17]/95 border-b border-slate-800 text-white sticky top-0 z-45 p-4 flex flex-col gap-3 shadow-md backdrop-blur-md">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="w-8 h-8 rounded-lg object-cover border border-[#C8A435]" />
+            <img src="/axemet-system-logo.png?v=2" alt="Axemet System" className="w-8 h-8 rounded-lg object-cover border border-[var(--ax-accent)]" />
             <div>
-              <span className="text-[8px] font-black tracking-widest text-[#C8A435] uppercase block leading-none">AXEMET SYSTEM</span>
-              <span className="text-[10px] font-black text-slate-100 uppercase block leading-none">Gestão Industrial</span>
+              <span className="text-[8px] font-black tracking-widest text-[var(--ax-accent)] uppercase block leading-none font-mono">AXEMET SYSTEM</span>
+              <span className="text-[10px] font-bold text-slate-300 uppercase block leading-none mt-0.5">Gestão Industrial</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -2080,11 +2082,11 @@ export default function App() {
 
         {/* Responsive Dropdown Selector for Funnel Stages */}
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-bold text-slate-400 shrink-0">Navegar Funil:</span>
+          <span className="text-[10px] font-bold text-slate-500 shrink-0 font-mono">Navegar Funil:</span>
           <select
             value={appView}
             onChange={(e) => setAppView(e.target.value as any)}
-            className="flex-1 bg-slate-900 border border-slate-750 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold focus:outline-none focus:ring-1 focus:ring-orange-500 cursor-pointer"
+            className="flex-1 bg-slate-950 border border-slate-800 text-slate-200 text-xs rounded-lg px-2.5 py-1.5 font-bold focus:outline-none focus:ring-1 focus:ring-[var(--ax-accent)] cursor-pointer"
           >
             <option value="modulo11">📊 Dashboard 360°</option>
             <optgroup label="1. COMERCIAL">
@@ -2131,10 +2133,10 @@ export default function App() {
       <div className="axemet-workspace flex-1 flex flex-col min-w-0 min-h-screen">
         
         {/* DESKTOP METADATA TOP BAR */}
-        <header className="axemet-topbar hidden md:flex items-center justify-between px-6 py-4 bg-white border-b border-slate-200 shrink-0 shadow-xs">
+        <header className="axemet-topbar hidden md:flex items-center justify-between px-6 py-4 bg-[#060a13]/80 border-b border-slate-800 shrink-0 shadow-md backdrop-blur-2xl">
           <div>
-            <span className="text-[9px] font-black text-[#1A3F6F] uppercase tracking-widest block leading-none">AXEMET SYSTEM • GESTÃO INDUSTRIAL</span>
-            <h2 className="text-sm font-black text-slate-800 uppercase tracking-tight mt-1 flex items-center gap-1.5 font-heading">
+            <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest block leading-none font-mono">AXEMET SYSTEM • GESTÃO INDUSTRIAL • T1</span>
+            <h2 className="text-sm font-black text-slate-200 uppercase tracking-tight mt-1 flex items-center gap-1.5 font-heading">
               {appView === 'modulo11' && '📊 Dashboard 360°'}
               {appView === 'crm' && '💼 Funil de Vendas CRM'}
               {appView === 'projetos' && 'Projetos e Ordens de Fabricação'}
@@ -2159,15 +2161,15 @@ export default function App() {
 
           {/* Quick Actions & Profiles */}
           <div className="flex items-center gap-4 text-xs font-semibold">
-            <div className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-2">
+            <div className="px-3 py-1.5 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center gap-2">
               <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0 animate-pulse" />
-              <span className="text-slate-600 font-bold">{userProfile?.organization || 'Axemet Solution LTDA'}</span>
+              <span className="text-slate-300 font-bold">{userProfile?.organization || 'Axemet Solution LTDA'}</span>
             </div>
             
             <div className="text-right">
-              <span className="text-[#0F2A43] block font-black leading-none">{userProfile?.full_name || 'Filipe Santos'}</span>
-              <span className="text-[10px] text-[#C8A435] block mt-1 font-extrabold uppercase tracking-wide">
-                {userProfile?.role === 'admin' ? 'Super Admin' : userProfile?.role === 'manager' ? 'Gestor' : 'Colaborador de Setor'}
+              <span className="text-slate-200 block font-black leading-none">{userProfile?.full_name || 'Filipe Santos'}</span>
+              <span className="text-[10px] text-[var(--ax-accent)] block mt-1 font-extrabold uppercase tracking-wide font-mono">
+                {userProfile?.role === 'admin' ? 'Super Admin' : userProfile?.role === 'manager' ? 'Gestor' : 'Colaborador'}
               </span>
             </div>
           </div>

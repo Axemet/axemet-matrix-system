@@ -8,218 +8,356 @@
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
 }
 
-/* Custom animations */
+/* Custom premium animations */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-.animate-fade-in {
-  animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; box-shadow: 0 0 12px rgba(245, 158, 11, 0.2); }
+  50% { opacity: 1; box-shadow: 0 0 24px rgba(245, 158, 11, 0.45); }
 }
 
-/* Axemet System — visual language */
+.animate-fadeIn {
+  animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pulseGlow {
+  animation: pulseGlow 2s infinite ease-in-out;
+}
+
+/* UI/UX Tokens - Titanium & Obsidian Dark Aesthetic */
 :root {
-  --ax-navy: #091d33;
-  --ax-navy-2: #102e4b;
-  --ax-blue: #2d6db2;
-  --ax-gold: #d5ad4a;
-  --ax-ink: #142338;
-  --ax-muted: #6e7d90;
-  --ax-line: #dfe7ef;
-  --ax-surface: #f5f8fb;
+  --ax-bg: #060a13;
+  --ax-bg-grid: #090f1d;
+  --ax-panel: rgba(13, 20, 35, 0.72);
+  --ax-panel-solid: #0f172a;
+  --ax-accent: #ff9f1c; /* Laser Amber / Neon Gold */
+  --ax-accent-glow: rgba(255, 159, 28, 0.15);
+  --ax-border: rgba(255, 255, 255, 0.08);
+  --ax-border-highlight: rgba(255, 255, 255, 0.15);
+  --ax-text-main: #f8fafc;
+  --ax-text-muted: #94a3b8;
+  --ax-navy: #0b1329;
 }
 
-html { background: var(--ax-surface); }
+html {
+  background: var(--ax-bg);
+  color-scheme: dark;
+}
+
 body {
   min-width: 320px;
   font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
-  background:
-    radial-gradient(circle at 82% -10%, rgba(79, 136, 195, .12), transparent 27rem),
-    radial-gradient(circle at 10% 0%, rgba(213, 173, 74, .07), transparent 22rem),
-    var(--ax-surface);
-  color: var(--ax-ink);
+  font-size: 14px;
+  line-height: 1.6;
+  background: 
+    radial-gradient(circle at 80% -20%, rgba(255, 159, 28, 0.08), transparent 36rem),
+    radial-gradient(circle at 15% 15%, rgba(45, 109, 178, 0.06), transparent 30rem),
+    linear-gradient(180deg, var(--ax-bg) 0%, #03050a 100%);
+  color: var(--ax-text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-h1, h2, h3, h4, h5, h6 { font-family: "Sora", ui-sans-serif, sans-serif; letter-spacing: -.018em; }
+h1, h2, h3, h4, h5, h6 {
+  font-family: "Sora", ui-sans-serif, sans-serif;
+  letter-spacing: -.02em;
+  color: var(--ax-text-main);
+}
 
-::selection { background: rgba(213, 173, 74, .32); color: var(--ax-navy); }
-* { scrollbar-width: thin; scrollbar-color: #91a5b9 transparent; }
-*::-webkit-scrollbar { width: 7px; height: 7px; }
-*::-webkit-scrollbar-thumb { background: #9bafc2; border-radius: 999px; }
+/* Custom premium scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 99px; transition: background 0.2s; }
+::-webkit-scrollbar-thumb:hover { background: var(--ax-accent); }
 
-.axemet-shell { background: transparent; }
+/* Premium Workspace Shell Layout */
+.axemet-shell {
+  min-height: 100vh;
+  background: transparent;
+}
+
 .axemet-sidebar {
-  width: 17.5rem;
-  background:
-    linear-gradient(180deg, rgba(13, 42, 68, .98), rgba(5, 23, 41, .99)) !important;
-  border-right-color: rgba(169, 194, 218, .13) !important;
-  box-shadow: 18px 0 46px rgba(8, 25, 43, .10);
+  width: 17rem !important;
+  background: linear-gradient(180deg, rgba(8, 12, 23, 0.95) 0%, rgba(3, 5, 10, 0.98) 100%) !important;
+  border-right: 1px solid var(--ax-border) !important;
+  box-shadow: 10px 0 35px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
 }
-.axemet-sidebar button { border-radius: 10px; }
-.axemet-sidebar button:hover { transform: translateX(2px); }
+
+.axemet-sidebar button {
+  border-radius: 8px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--ax-text-muted);
+}
+
+.axemet-sidebar button:hover {
+  color: var(--ax-text-main) !important;
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  transform: translateX(3px);
+}
+
+.axemet-sidebar button.bg-\[\#2563A8\] {
+  background: linear-gradient(135deg, rgba(255, 159, 28, 0.18) 0%, rgba(255, 159, 28, 0.05) 100%) !important;
+  border: 1px solid rgba(255, 159, 28, 0.4) !important;
+  color: var(--ax-accent) !important;
+  box-shadow: 0 4px 15px rgba(255, 159, 28, 0.1);
+}
+
 .axemet-brand {
-  background: linear-gradient(135deg, rgba(6, 25, 44, .96), rgba(20, 55, 87, .82)) !important;
+  background: linear-gradient(135deg, rgba(13, 20, 35, 0.9), rgba(6, 10, 18, 0.95)) !important;
+  border-bottom: 1px solid var(--ax-border);
   position: relative;
   overflow: hidden;
 }
+
 .axemet-brand::after {
   content: '';
   position: absolute;
-  width: 120px; height: 120px; right: -55px; top: -80px;
-  border: 1px solid rgba(213,173,74,.25); border-radius: 50%;
-  box-shadow: 0 0 0 18px rgba(213,173,74,.04), 0 0 0 36px rgba(213,173,74,.025);
+  width: 140px; height: 140px; right: -50px; top: -60px;
+  border: 1px solid rgba(255, 159, 28, 0.15); border-radius: 50%;
+  box-shadow: 0 0 0 12px rgba(255, 159, 28, 0.03), 0 0 0 24px rgba(255, 159, 28, 0.015);
 }
-.axemet-brand > * { position: relative; z-index: 1; }
-.axemet-org { background: rgba(3, 21, 37, .48) !important; }
 
-.axemet-workspace { background: transparent; }
+.axemet-org {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
 .axemet-topbar {
-  min-height: 76px;
-  background: rgba(255, 255, 255, .84) !important;
-  backdrop-filter: blur(18px);
-  border-bottom-color: rgba(203, 216, 228, .75) !important;
-  box-shadow: 0 1px 0 rgba(16, 46, 75, .03);
-}
-.axemet-main { padding-top: 30px; padding-bottom: 42px; }
-.axemet-main input, .axemet-main select {
-  transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
-}
-.axemet-main input:focus, .axemet-main select:focus {
-  box-shadow: 0 0 0 4px rgba(45, 109, 178, .10) !important;
+  min-height: 70px;
+  background: rgba(6, 10, 19, 0.75) !important;
+  backdrop-filter: blur(20px);
+  border-bottom: 1px solid var(--ax-border) !important;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
 }
 
-.axemet-hero {
-  min-height: 232px;
-  border: 1px solid rgba(157, 190, 221, .22) !important;
-  border-radius: 22px !important;
-  box-shadow: 0 22px 48px rgba(10, 34, 57, .18) !important;
-  background:
-    radial-gradient(circle at 83% 22%, rgba(69, 141, 211, .42), transparent 19rem),
-    linear-gradient(126deg, #071a2e 0%, #0e3558 58%, #102b47 100%) !important;
+.axemet-main {
+  max-width: 1440px !important;
+  padding-inline: clamp(16px, 4vw, 40px) !important;
 }
+
+/* Premium Panel/Cards (Bento 2.0 Glassmorphism) */
+.axemet-main .rounded-2xl.border.bg-white {
+  background: var(--ax-panel) !important;
+  border: 1px solid var(--ax-border) !important;
+  box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.03) !important;
+  backdrop-filter: blur(24px);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  color: var(--ax-text-main);
+}
+
+.axemet-main .rounded-2xl.border.bg-white:hover {
+  border-color: rgba(255, 159, 28, 0.3) !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 159, 28, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+}
+
+/* Forms Input Aero-Styling */
+.axemet-main input:not([type='checkbox']):not([type='radio']),
+.axemet-main select,
+.axemet-main textarea {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(10, 16, 27, 0.6) !important;
+  color: var(--ax-text-main) !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 0.85rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.axemet-main input:hover,
+.axemet-main select:hover,
+.axemet-main textarea:hover {
+  border-color: rgba(255, 159, 28, 0.4) !important;
+  background-color: rgba(15, 23, 42, 0.8) !important;
+}
+
+.axemet-main input:focus,
+.axemet-main select:focus,
+.axemet-main textarea:focus {
+  border-color: var(--ax-accent) !important;
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.15) !important;
+  outline: none;
+}
+
+/* Table Aero-Styling */
+.axemet-main table {
+  background: transparent !important;
+  color: var(--ax-text-main);
+}
+
+.axemet-main table thead {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+.axemet-main table th {
+  color: var(--ax-text-muted) !important;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  font-size: 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.axemet-main table td {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Premium Industrial Hero Card */
+.axemet-hero {
+  min-height: 200px;
+  border: 1px solid rgba(255, 159, 28, 0.25) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45) !important;
+  background: 
+    radial-gradient(circle at 80% 20%, rgba(255, 159, 28, 0.25), transparent 22rem),
+    linear-gradient(135deg, #070e1b 0%, #111d33 100%) !important;
+}
+
 .axemet-hero::before {
   content: '';
   position: absolute; inset: 0;
-  opacity: .16;
+  opacity: .05;
   background-image: linear-gradient(rgba(255,255,255,.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.2) 1px, transparent 1px);
-  background-size: 38px 38px;
-  mask-image: linear-gradient(90deg, black, transparent 80%);
-}
-.axemet-hero > * { position: relative; z-index: 1; }
-.axemet-hero-stats > div {
-  backdrop-filter: blur(8px);
-  border-radius: 14px !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
-}
-.axemet-filter {
-  border-radius: 16px !important;
-  border-color: rgba(211, 222, 232, .85) !important;
-  box-shadow: 0 12px 28px rgba(18, 44, 70, .05) !important;
+  background-size: 32px 32px;
+  mask-image: linear-gradient(90deg, black, transparent 85%);
 }
 
-/* People & operations module */
 .rh-hero {
-  background:
-    radial-gradient(circle at 90% 15%, rgba(213,173,74,.28), transparent 18rem),
-    linear-gradient(125deg, #071a2e, #12416a);
-  box-shadow: 0 18px 38px rgba(8, 32, 56, .16);
+  background: 
+    radial-gradient(circle at 90% 10%, rgba(255, 159, 28, 0.28), transparent 20rem),
+    linear-gradient(135deg, #070f1a 0%, #13243f 100%) !important;
+  border: 1px solid var(--ax-border) !important;
+  box-shadow: 0 18px 38px rgba(0,0,0,0.45);
 }
+
 .rh-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: .5rem;
-  border-radius: .75rem;
-  background: #1d5f9e;
-  color: white;
-  padding: .6rem .85rem;
-  font-size: .72rem;
-  font-weight: 800;
-  transition: transform .18s ease, background .18s ease, box-shadow .18s ease;
-  box-shadow: 0 6px 15px rgba(29,95,158,.2);
-}
-.rh-primary:hover { background: #124a80; transform: translateY(-1px); }
-.rh-tabs::-webkit-scrollbar { display: none; }
-
-/* Command-deck treatment: deliberate hierarchy instead of prototype panels. */
-.axemet-shell { min-height: 100dvh; }
-.axemet-workspace { min-width: 0; }
-.axemet-main { max-width: 1440px !important; padding-inline: clamp(20px, 3vw, 48px) !important; }
-.axemet-main > .space-y-6 { gap: 1.5rem; }
-.axemet-main .rounded-2xl.border.bg-white {
-  border-color: rgba(204, 218, 230, .84);
-  box-shadow: 0 12px 28px rgba(20, 46, 70, .055), 0 1px 1px rgba(20, 46, 70, .04);
-}
-.axemet-main .rounded-2xl.border.bg-white:hover { box-shadow: 0 16px 34px rgba(20, 46, 70, .075), 0 1px 1px rgba(20, 46, 70, .04); }
-.axemet-main table thead { background: #f6f9fc; }
-.axemet-main table th { font-weight: 800; letter-spacing: .075em; color: #72849a; }
-.axemet-main button { transition: transform .16s ease, box-shadow .16s ease, background-color .16s ease; }
-.axemet-main button:active { transform: translateY(1px); }
-.axemet-main input, .axemet-main select, .axemet-main textarea {
-  border-color: #d5e0ea !important;
-  background-color: #fbfdff !important;
-  border-radius: 10px !important;
-}
-.axemet-main input:hover, .axemet-main select:hover, .axemet-main textarea:hover { border-color: #a9c2d7 !important; }
-.axemet-topbar { padding-inline: clamp(20px, 3vw, 48px) !important; }
-.axemet-sidebar { width: 18rem !important; padding-bottom: 18px; }
-.axemet-sidebar .space-y-4 { display: flex; flex-direction: column; gap: 18px !important; }
-.axemet-sidebar span[class*='tracking-widest'] { letter-spacing: .13em; }
-.axemet-sidebar button {
+  border-radius: 8px;
   min-height: 38px;
-  border: 1px solid transparent;
-}
-.axemet-sidebar button:hover { border-color: rgba(166, 202, 232, .14); background-color: rgba(95, 154, 203, .12) !important; }
-.axemet-sidebar button[class*='bg-[#2563A8]'] { background: linear-gradient(100deg, #1e5f9b, #17466f) !important; border-color: rgba(217, 181, 77, .27); }
-.axemet-sidebar .axemet-org { margin: 10px 12px 4px; border: 1px solid rgba(148, 191, 221, .12); border-radius: 12px; }
-.rh-hero { border-radius: 22px; padding: clamp(24px, 3vw, 36px) !important; position: relative; overflow: hidden; }
-.rh-hero::after { content: ''; position: absolute; width: 290px; height: 290px; right: -130px; bottom: -175px; border: 1px solid rgba(213,173,74,.22); border-radius: 50%; box-shadow: 0 0 0 28px rgba(213,173,74,.04), 0 0 0 56px rgba(213,173,74,.025); }
-.rh-hero > * { position: relative; z-index: 1; }
-.rh-primary { border-radius: 10px; min-height: 40px; padding-inline: 1rem; background: linear-gradient(105deg, #236fae, #174c7a); }
-
-@media (min-width: 1280px) {
-  .axemet-main { padding-top: 38px; }
-  .axemet-sidebar { width: 19rem !important; }
+  font-weight: 700;
+  background: linear-gradient(135deg, #ff9f1c 0%, #e68500 100%) !important;
+  color: #050811 !important;
+  border: none;
+  box-shadow: 0 4px 15px rgba(255, 159, 28, 0.25);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
 }
 
-/* Axemet System — premium industrial entry experience */
-.ax-login { background: #eef3f7; }
-.ax-login-showcase { min-height: 100vh; background: radial-gradient(circle at 82% 18%, rgba(66, 153, 180, .27), transparent 33%), linear-gradient(145deg, #071526 0%, #0b2942 52%, #113f5a 100%); }
-.ax-login-grid { opacity: .5; background-image: linear-gradient(rgba(148, 201, 220, .07) 1px, transparent 1px), linear-gradient(90deg, rgba(148, 201, 220, .07) 1px, transparent 1px); background-size: 34px 34px; mask-image: linear-gradient(to bottom, black, transparent 88%); }
-.ax-login-kicker { width: fit-content; border: 1px solid rgba(213,173,74,.42); background: rgba(213,173,74,.08); border-radius: 999px; color: #e6c66d; font-size: 9px; font-weight: 800; letter-spacing: .16em; padding: 7px 10px; }
-.ax-login-showcase .space-y-4 > div { align-items: flex-start; border: 1px solid rgba(255,255,255,.08); border-radius: 14px; background: rgba(4,16,30,.19); padding: 12px; }
-.ax-login-showcase .space-y-4 > div > div:first-child { flex: none; }
-.ax-login-showcase .space-y-4 > div > span { line-height: 1.45; }
-.ax-login-panel { background: linear-gradient(135deg, #f8fbfd 0%, #edf3f7 100%); }
-.ax-login-card { background: rgba(255,255,255,.93); border: 1px solid rgba(184,199,210,.6); border-radius: 24px; box-shadow: 0 24px 70px rgba(15,42,67,.13); padding: clamp(24px, 4vw, 40px); }
-.ax-login-card h2 { letter-spacing: -.035em; }
-.ax-login-card input { border-radius: 11px !important; min-height: 43px; }
-.ax-login-card form > button[type='submit'] { min-height: 48px; border-radius: 12px; background: linear-gradient(110deg, #103a61, #1c5d88) !important; }
-
-@media (max-width: 768px) {
-  .axemet-main { padding: 18px 14px 88px; }
-  .axemet-hero { min-height: auto; border-radius: 18px !important; }
+.rh-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(255, 159, 28, 0.35);
+  filter: brightness(1.1);
 }
-@media (max-width: 1023px) { .ax-login-showcase { min-height: auto; } .ax-login-card { box-shadow: none; } }
 
-/* Unified controls and compact navigation — shared across the industrial modules. */
-.axemet-main label { line-height: 1.35; }
-.axemet-main input:not([type='checkbox']):not([type='radio']),
-.axemet-main select {
-  font-size: .84rem !important;
+.rh-primary:active {
+  transform: translateY(0);
 }
-.axemet-main textarea { font-size: .875rem !important; line-height: 1.45; }
-.axemet-main input::placeholder,
-.axemet-main textarea::placeholder { color: #94a3b8; opacity: 1; }
-.axemet-sidebar { width: 16.75rem !important; }
-.axemet-sidebar .flex-1 { padding: .55rem .55rem !important; }
-.axemet-sidebar .space-y-4 { gap: 5px !important; }
-.axemet-sidebar .space-y-1 { gap: 0 !important; }
-.axemet-sidebar button { min-height: 30px; padding: .34rem .55rem !important; font-size: .73rem; }
-.axemet-sidebar button svg { width: .9rem; height: .9rem; }
-.axemet-sidebar span[class*='tracking-widest'] { margin-top: 4px; margin-bottom: 1px !important; font-size: .53rem; line-height: 1.1; }
-.axemet-sidebar .axemet-org { margin-top: 6px; margin-bottom: 2px; }
-@media (min-width: 1280px) { .axemet-sidebar { width: 17.25rem !important; } }
+
+/* Premium Industrial Login Screen */
+.ax-login {
+  background: #040710;
+}
+
+.ax-login-showcase {
+  background: 
+    radial-gradient(circle at 80% 20%, rgba(255, 159, 28, 0.2), transparent 32rem),
+    linear-gradient(135deg, #050811 0%, #0d1627 50%, #152542 100%);
+}
+
+.ax-login-grid {
+  opacity: .08;
+  background-image: 
+    linear-gradient(rgba(255, 255, 255, .15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, .15) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.ax-login-kicker {
+  border: 1px solid rgba(255, 159, 28, 0.4);
+  background: rgba(255, 159, 28, 0.08);
+  border-radius: 99px;
+  color: var(--ax-accent);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.15em;
+  padding: 6px 12px;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.ax-login-card {
+  background: rgba(13, 21, 38, 0.8) !important;
+  border: 1px solid var(--ax-border) !important;
+  border-radius: 20px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6) !important;
+  backdrop-filter: blur(30px);
+}
+
+.ax-login-card form > button[type='submit'] {
+  min-height: 46px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ff9f1c 0%, #e68500 100%) !important;
+  color: #050811 !important;
+  border: none;
+  font-weight: 800;
+  box-shadow: 0 6px 20px rgba(255, 159, 28, 0.25);
+  cursor: pointer;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ax-login-card form > button[type='submit']:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(255, 159, 28, 0.35);
+  filter: brightness(1.1);
+}
+
+.ax-login-card input {
+  background-color: rgba(8, 12, 23, 0.6) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: var(--ax-text-main) !important;
+}
+
+.ax-login-card input:focus {
+  border-color: var(--ax-accent) !important;
+  box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.15) !important;
+}
+
+/* Unified tabs, tables, status badges */
+.badge-status {
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-family: "IBM Plex Mono", monospace;
+}
+
+.badge-status-production { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
+.badge-status-tryout { background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.25); }
+.badge-status-delivered { background: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.25); }
+.badge-status-warning { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25); }
+.badge-status-error { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
+
+/* Bento Grid Widgets */
+.bento-metric-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.bento-metric-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--ax-accent), transparent);
+  opacity: 0.3;
+}
+
+/* Animations */
+.hover-scale {
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.hover-scale:hover {
+  transform: scale(1.02);
+}
