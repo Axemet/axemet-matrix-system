@@ -154,6 +154,51 @@ h1, h2, h3, h4, h5, h6 {
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4), 0 0 15px rgba(255, 159, 28, 0.05), inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
 }
 
+/* These light-designed cards are forced to dark panels above.
+   Recolor their light-theme text/accents so everything stays visible (WCAG AA). */
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-slate-900, .text-slate-800, .text-slate-700, .text-slate-600,
+  .text-gray-950, .text-gray-900, .text-gray-800, .text-gray-700, .text-gray-600, .text-gray-500
+) {
+  color: var(--ax-text-main) !important;
+}
+
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-emerald-700, .text-emerald-600
+) {
+  color: #6ee7b7 !important;
+}
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-indigo-700, .text-indigo-600
+) {
+  color: #a5b4fc !important;
+}
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-blue-600, .text-blue-500, .text-sky-700
+) {
+  color: #7dd3fc !important;
+}
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-red-600, .text-red-500
+) {
+  color: #fca5a5 !important;
+}
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-amber-700, .text-amber-600
+) {
+  color: #fcd34d !important;
+}
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .text-teal-700
+) {
+  color: #5eead4 !important;
+}
+
+.axemet-main .rounded-2xl.border.bg-white :is(.bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100, .bg-indigo-50\/30) {
+  background-color: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
 /* Forms Input Aero-Styling */
 .axemet-main input:not([type='checkbox']):not([type='radio']),
 .axemet-main select,
@@ -427,12 +472,6 @@ h1, h2, h3, h4, h5, h6 {
 .axemet-main .font-mono,
 .font-mono {
   font-feature-settings: "tnum" 1, "zero" 1;
-}
-
-/* Boost legibility of secondary text across the app (WCAG AA) */
-.text-slate-500,
-.text-slate-400 {
-  color: var(--ax-text-muted) !important;
 }
 
 /* Smooth, accessible scrolling */
