@@ -2003,7 +2003,7 @@ export default function App() {
 
             {/* Quick action: Create new budget */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h3 className="text-base font-extrabold text-slate-950 font-heading flex items-center gap-2">
+              <h3 className="text-base font-extrabold text-slate-100 font-heading flex items-center gap-2">
                 <FileText className="w-5 h-5 text-[#EA580C]" />
                 Histórico de Orçamentos
               </h3>

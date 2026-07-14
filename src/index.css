@@ -216,14 +216,14 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Light-themed cards OUTSIDE force-dark panels: the body default is
-   --ax-text-main (white), which creates white-on-white on bg-white surfaces.
-   Force dark text so every white card stays readable.
-   Inside force-dark panels the more-specific rules below override this. */
-.axemet-main .bg-white {
+/* Light-themed cards: the body default is --ax-text-main (white), which
+   creates white-on-white on bg-white surfaces.  Force dark text so every
+   white card stays readable.  Inside force-dark panels the more-specific
+   rules below override this. */
+.bg-white {
   color: #1e293b;
 }
-.axemet-main .bg-white :is(
+.bg-white :is(
   .text-slate-400, .text-slate-500, .text-gray-400, .text-gray-500
 ) {
   color: #64748b;
@@ -237,6 +237,19 @@ h1, h2, h3, h4, h5, h6 {
   .text-slate-400, .text-slate-500, .text-gray-400, .text-gray-500
 ) {
   color: var(--ax-text-muted);
+}
+
+/* Select option elements: ensure dark text on light bg everywhere */
+select option {
+  color: #1e293b;
+  background-color: #ffffff;
+}
+
+/* Inputs outside force-dark panels: inherit dark text from .bg-white parent */
+.bg-white input:not([type='checkbox']):not([type='radio']),
+.bg-white select,
+.bg-white textarea {
+  color: #1e293b;
 }
 
 /* Forms: responsive base for ALL inputs (works in light & dark contexts) */
@@ -292,26 +305,38 @@ textarea {
   outline: none;
 }
 
-/* Table Aero-Styling */
-.axemet-main table {
+/* Table Aero-Styling — force-dark panels only */
+.axemet-main .rounded-2xl.border.bg-white table {
   background: transparent !important;
   color: var(--ax-text-main);
 }
-
-.axemet-main table thead {
+.axemet-main .rounded-2xl.border.bg-white table thead {
   background: rgba(255, 255, 255, 0.02) !important;
 }
-
-.axemet-main table th {
+.axemet-main .rounded-2xl.border.bg-white table th {
   color: var(--ax-text-muted) !important;
   font-weight: 700;
   letter-spacing: 0.05em;
   font-size: 11px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
-
-.axemet-main table td {
+.axemet-main .rounded-2xl.border.bg-white table td {
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+/* Tables inside light-themed .bg-white cards: keep dark text */
+.axemet-main .bg-white table {
+  color: #1e293b;
+}
+.axemet-main .bg-white table thead {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+.axemet-main .bg-white table th {
+  color: #475569 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+.axemet-main .bg-white table td {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
 /* Premium Industrial Hero Card */
