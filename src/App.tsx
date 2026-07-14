@@ -98,14 +98,14 @@ import { approveBudgetToProject } from './lib/industrial';
 import { loadOrganizationSettings, saveOrganizationSettings } from './lib/settings';
 
 // Icons
-import { 
-  Plus, 
-  FolderOpen, 
-  Save, 
-  RotateCcw, 
-  Settings, 
-  FileDown, 
-  HelpCircle, 
+import {
+  Plus,
+  FolderOpen,
+  Save,
+  RotateCcw,
+  Settings,
+  FileDown,
+  HelpCircle,
   ArrowUpRight,
   TrendingUp,
   Cpu,
@@ -127,8 +127,26 @@ import {
   Shield,
   Activity,
   Building,
+  Building2,
   ChevronDown,
-  DollarSign
+  DollarSign,
+  LayoutDashboard,
+  Calculator,
+  Contact,
+  FolderKanban,
+  CalendarRange,
+  Boxes,
+  ShoppingCart,
+  ClipboardList,
+  Factory,
+  ShieldCheck,
+  PieChart,
+  Landmark,
+  Wrench,
+  IdCard,
+  Truck,
+  KeyRound,
+  GanttChartSquare
 } from 'lucide-react';
 
 function generateNextReference(existingDrafts: BudgetDraft[]): string {
@@ -180,6 +198,60 @@ function normalizePermissions(source: Record<string, { view: boolean; create: bo
 function displayPermissions(source: Record<string, any>) {
   const map: Record<string, string> = { comercial: 'Comercial', engenharia: 'Engenharia', pcp: 'PCP', producao: 'Produção', estoque: 'Almoxarifado', compras: 'Compras', qualidade: 'Qualidade', controladoria: 'Controladoria', financeiro: 'Financeiro', manutencao: 'Manutenção', bi: 'BI', rh: 'RH' };
   return Object.fromEntries(Object.entries(source || {}).map(([key, value]) => [map[key] || key, value]));
+}
+
+/* Professional sidebar navigation item with an icon chip + clear active state. */
+function SidebarNavItem({
+  icon,
+  label,
+  hint,
+  view,
+  activeView,
+  onNavigate,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  view: string;
+  activeView: string;
+  onNavigate: (view: string) => void;
+}) {
+  const active = activeView === view;
+  return (
+    <button
+      type="button"
+      onClick={() => onNavigate(view)}
+      aria-label={hint || label}
+      aria-current={active ? 'page' : undefined}
+      className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-[13px] font-semibold leading-tight transition-all duration-200 cursor-pointer ${
+        active
+          ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md ring-1 ring-[var(--ax-accent)]/30'
+          : 'text-slate-400 hover:bg-white/5 hover:text-slate-100'
+      }`}
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border transition-all duration-200 ${
+          active
+            ? 'border-[var(--ax-accent)]/40 bg-[var(--ax-accent)]/15 text-[var(--ax-accent)]'
+            : 'border-white/5 bg-white/[0.03] text-slate-400 group-hover:bg-white/[0.06] group-hover:text-slate-200'
+        }`}
+      >
+        {icon}
+      </span>
+      <span className="flex-1 text-left">{label}</span>
+    </button>
+  );
+}
+
+function SidebarSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <span className="block px-3 pb-1 pt-2 text-[10px] font-black uppercase tracking-[0.18em] text-slate-500">
+        {title}
+      </span>
+      {children}
+    </div>
+  );
 }
 
 export default function App() {
@@ -1804,292 +1876,68 @@ export default function App() {
           <span className="px-2 py-0.5 rounded bg-emerald-950/40 border border-emerald-900/30 text-emerald-400 font-mono text-[9px] font-bold">● ONLINE</span>
         </div>
 
-        {/* Funnel Sections */}
-        <div className="flex-1 px-3 py-4 space-y-4 text-xs font-semibold">
-          
-{/* Section: VISÃO GERAL */}
-           <div role="group" aria-labelledby="section-home-label">
-             <span id="section-home-label" className="text-[9px] font-black text-[var(--ax-accent)] uppercase tracking-widest block px-2 mb-1.5 opacity-80">Visão Geral</span>
-             <button
-               onClick={() => setAppView('modulo11')}
-               aria-label="Dashboard 360° - Visão geral em tempo real"
-               aria-current={appView === 'modulo11' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo11' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Activity className="w-4 h-4 text-[var(--ax-accent)] shrink-0" />
-               <span>Dashboard 360°</span>
-               <span className="ml-auto text-[8px] px-1 py-0.2 rounded bg-slate-900 border border-slate-800 text-slate-400 font-mono">Real-time</span>
-             </button>
-           </div>
+        {/* Funnel Sections — Professional modular navigation */}
+        <nav className="flex-1 px-3 py-4 space-y-5 overflow-y-auto" aria-label="Módulos do sistema">
+          <SidebarSection title="Visão Geral">
+            <SidebarNavItem
+              icon={<LayoutDashboard className="h-[18px] w-[18px]" />}
+              label="Dashboard 360°"
+              hint="Dashboard 360° — visão geral executiva em tempo real"
+              view="modulo11"
+              activeView={appView}
+              onNavigate={setAppView}
+            />
+          </SidebarSection>
 
-{/* Section: COMERCIAL */}
-           <div role="group" aria-labelledby="section-comercial-label">
-             <span id="section-comercial-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">1. Comercial & Vendas</span>
-             <button
-               onClick={() => setAppView('crm')}
-               aria-label="Funil de Vendas CRM - Gerencie oportunidades e pipeline"
-               aria-current={appView === 'crm' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'crm' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <TrendingUp className="w-4 h-4 text-amber-500 shrink-0" />
-               <span>Funil de Vendas CRM</span>
-             </button>
-             <button
-               onClick={() => setAppView('home')}
-               aria-label="Orçamentos & Custos - Crie e gerencie orçamentos de moldes"
-               aria-current={appView === 'home' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'home' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <FileText className="w-4 h-4 text-amber-500 shrink-0" />
-               <span>Orçamentos & Custos</span>
-             </button>
-             <button
-               onClick={() => setAppView('clientes')}
-               aria-label="Banco de Clientes - Gerencie cadastro de clientes"
-               aria-current={appView === 'clientes' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'clientes' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Users className="w-4 h-4 text-amber-500 shrink-0" />
-               <span>Banco de Clientes</span>
-             </button>
-           </div>
+          <SidebarSection title="1 · Comercial & Vendas">
+            <SidebarNavItem icon={<TrendingUp className="h-[18px] w-[18px]" />} label="Funil de Vendas CRM" hint="Funil de Vendas CRM — oportunidades e pipeline" view="crm" activeView={appView} onNavigate={setAppView} />
+            <SidebarNavItem icon={<Calculator className="h-[18px] w-[18px]" />} label="Orçamentos & Custos" hint="Orçamentos & Custos — crie e gerencie orçamentos de moldes" view="home" activeView={appView} onNavigate={setAppView} />
+            <SidebarNavItem icon={<Contact className="h-[18px] w-[18px]" />} label="Banco de Clientes" hint="Banco de Clientes — cadastro e histórico" view="clientes" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-{/* Section: ENGENHARIA */}
-           <div role="group" aria-labelledby="section-engenharia-label">
-             <span id="section-engenharia-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">2. Engenharia</span>
-             <button
-               onClick={() => setAppView('modulo2')}
-               aria-label="Projetos & BOM - Gestão de projetos de engenharia e lista de materiais"
-               aria-current={appView === 'modulo2' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo2' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Cpu className="w-4 h-4 text-emerald-400 shrink-0" />
-               <span>Projetos & BOM</span>
-             </button>
-           </div>
+          <SidebarSection title="2 · Engenharia">
+            <SidebarNavItem icon={<FolderKanban className="h-[18px] w-[18px]" />} label="Projetos & BOM" hint="Projetos & BOM — engenharia e lista de materiais" view="modulo2" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: PCP */}
-           <div role="group" aria-labelledby="section-pcp-label">
-             <span id="section-pcp-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">3. Planejamento PCP</span>
-             <button
-               onClick={() => setAppView('modulo3')}
-               aria-label="Gantt & Programação - Planejamento e controle de produção"
-               aria-current={appView === 'modulo3' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo3' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Clock className="w-4 h-4 text-yellow-555 shrink-0 text-amber-450" />
-               <span>Gantt & Programação</span>
-             </button>
-           </div>
+          <SidebarSection title="3 · Planejamento PCP">
+            <SidebarNavItem icon={<GanttChartSquare className="h-[18px] w-[18px]" />} label="Gantt & Programação" hint="Gantt & Programação — planejamento e controle de produção" view="modulo3" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: ALMOXARIFADO */}
-           <div role="group" aria-labelledby="section-almox-label">
-             <span id="section-almox-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">4. Suprimentos</span>
-             <button
-               onClick={() => setAppView('modulo4')}
-               aria-label="Estoque & Chapas - Gestão de estoque de matérias-primas e chapas"
-               aria-current={appView === 'modulo4' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo4' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Layers className="w-4 h-4 text-teal-400 shrink-0" />
-               <span>Estoque & Chapas</span>
-             </button>
-             <button
-               onClick={() => setAppView('modulo9')}
-               aria-label="Compras Triple-Vendor - Processo de cotação com 3 fornecedores"
-               aria-current={appView === 'modulo9' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo9' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Briefcase className="w-4 h-4 text-teal-400 shrink-0" />
-               <span>Compras Triple-Vendor</span>
-             </button>
-           </div>
+          <SidebarSection title="4 · Suprimentos">
+            <SidebarNavItem icon={<Boxes className="h-[18px] w-[18px]" />} label="Estoque & Chapas" hint="Estoque & Chapas — matérias-primas e chapas" view="modulo4" activeView={appView} onNavigate={setAppView} />
+            <SidebarNavItem icon={<ShoppingCart className="h-[18px] w-[18px]" />} label="Compras Triple-Vendor" hint="Compras Triple-Vendor — cotação com 3 fornecedores" view="modulo9" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: CHÃO DE FÁBRICA */}
-           <div role="group" aria-labelledby="section-chao-label">
-             <span id="section-chao-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">5. Manufatura</span>
-             <button
-               onClick={() => setAppView('projetos')}
-               aria-label="Projetos & Ordens - Acompanhamento de projetos e ordens de produção"
-               aria-current={appView === 'projetos' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'projetos' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Briefcase className="w-4 h-4 text-sky-400 shrink-0" />
-               <span>Projetos & Ordens</span>
-             </button>
-             <button
-               onClick={() => setAppView('modulo5')}
-               aria-label="Chão de Fábrica OS - Ordens de serviço e apontamento de produção"
-               aria-current={appView === 'modulo5' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo5' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Activity className="w-4 h-4 text-sky-450 shrink-0" />
-               <span>Chão de Fábrica OS</span>
-             </button>
-             <button
-               onClick={() => setAppView('modulo6')}
-               aria-label="Qualidade & RNC - Gestão de qualidade e relatórios de não conformidade"
-               aria-current={appView === 'modulo6' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo6' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-               <span>Qualidade & RNC</span>
-             </button>
-           </div>
+          <SidebarSection title="5 · Manufatura">
+            <SidebarNavItem icon={<ClipboardList className="h-[18px] w-[18px]" />} label="Projetos & Ordens" hint="Projetos & Ordens — acompanhamento de produção" view="projetos" activeView={appView} onNavigate={setAppView} />
+            <SidebarNavItem icon={<Factory className="h-[18px] w-[18px]" />} label="Chão de Fábrica OS" hint="Chão de Fábrica OS — ordens de serviço e apontamento" view="modulo5" activeView={appView} onNavigate={setAppView} />
+            <SidebarNavItem icon={<ShieldCheck className="h-[18px] w-[18px]" />} label="Qualidade & RNC" hint="Qualidade & RNC — não conformidades" view="modulo6" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: CONTROLADORIA */}
-           <div role="group" aria-labelledby="section-control-label">
-             <span id="section-control-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">6. Controladoria</span>
-             <button
-               onClick={() => setAppView('modulo7')}
-               aria-label="Custos Radar - Comparativo orçado vs realizado"
-               aria-current={appView === 'modulo7' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo7' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <DollarSign className="w-4 h-4 text-emerald-400 shrink-0" />
-               <span>Custos Radar (Orç vs Real)</span>
-             </button>
-             <button
-               onClick={() => setAppView('modulo8')}
-               aria-label="Financeiro & DRE - Demonstração de resultados e fluxo de caixa"
-               aria-current={appView === 'modulo8' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo8' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Save className="w-4 h-4 text-emerald-400 shrink-0" />
-               <span>Financeiro & DRE</span>
-             </button>
-           </div>
+          <SidebarSection title="6 · Controladoria">
+            <SidebarNavItem icon={<PieChart className="h-[18px] w-[18px]" />} label="Custos Radar (Orç vs Real)" hint="Custos Radar — comparativo orçado vs realizado" view="modulo7" activeView={appView} onNavigate={setAppView} />
+            <SidebarNavItem icon={<Landmark className="h-[18px] w-[18px]" />} label="Financeiro & DRE" hint="Financeiro & DRE — demonstração de resultados" view="modulo8" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: PÓS-ENTREGA */}
-           <div role="group" aria-labelledby="section-pos-label">
-             <span id="section-pos-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">7. Operação em Campo</span>
-             <button
-               onClick={() => setAppView('modulo10')}
-               aria-label="Manutenção & Ciclos - Gestão de manutenção preventiva e corretiva"
-               aria-current={appView === 'modulo10' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'modulo10' 
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Settings className="w-4 h-4 text-purple-400 shrink-0" />
-               <span>Manutenção & Ciclos</span>
-             </button>
-           </div>
+          <SidebarSection title="7 · Operação em Campo">
+            <SidebarNavItem icon={<Wrench className="h-[18px] w-[18px]" />} label="Manutenção & Ciclos" hint="Manutenção & Ciclos — preventiva e corretiva" view="modulo10" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: PESSOAS & ESTRUTURA */}
-           <div role="group" aria-labelledby="section-pessoas-label">
-             <span id="section-pessoas-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5">8. Pessoas & Estrutura</span>
-             <button
-               onClick={() => setAppView('rh')}
-               aria-label="RH, Setores & Máquinas - Gestão de recursos humanos e estrutura organizacional"
-               aria-current={appView === 'rh' ? 'page' : undefined}
-               className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                 appView === 'rh'
-                   ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]'
-                   : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-               }`}
-             >
-               <Users className="w-4 h-4 text-violet-300 shrink-0" />
-               <span>RH, Setores & Máquinas</span>
-             </button>
-           </div>
+          <SidebarSection title="8 · Pessoas & Estrutura">
+            <SidebarNavItem icon={<IdCard className="h-[18px] w-[18px]" />} label="RH, Setores & Máquinas" hint="RH, Setores & Máquinas — pessoas e estrutura" view="rh" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-           {/* Section: ADMIN */}
-           <button
-             onClick={() => setAppView('fornecedores')}
-             aria-label="Fornecedores & Homologação - Cadastro e qualificação de fornecedores"
-             aria-current={appView === 'fornecedores' ? 'page' : undefined}
-             className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${appView === 'fornecedores' ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'}`}
-           >
-             <Briefcase className="w-4 h-4 text-amber-300 shrink-0" /><span>Fornecedores & Homologação</span>
-           </button>
-{(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
-             <div role="group" aria-labelledby="section-admin-label">
-               <span id="section-admin-label" className="text-[9px] font-black text-slate-500 uppercase tracking-widest block px-2 mb-1.5 font-mono">Configurações & Admin</span>
-               <button
-                 onClick={() => setAppView('organizacao')}
-                 aria-label="Minha Organização - Configurações da empresa"
-                 aria-current={appView === 'organizacao' ? 'page' : undefined}
-                 className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                   appView === 'organizacao' 
-                     ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                 }`}
-               >
-                 <Building className="w-4 h-4 text-indigo-400 shrink-0" />
-                 <span>Minha Organização</span>
-               </button>
-               <button
-                 onClick={() => setAppView('acessos')}
-                 aria-label="Gestão de Acessos - Controle de permissões de usuários"
-                 aria-current={appView === 'acessos' ? 'page' : undefined}
-                 className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center gap-2.5 transition cursor-pointer ${
-                   appView === 'acessos' 
-                     ? 'bg-[var(--ax-accent)]/10 text-[var(--ax-accent)] shadow-md border-l-4 border-[var(--ax-accent)]' 
-                     : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
-                 }`}
-               >
-                 <Shield className="w-4 h-4 text-rose-450 shrink-0 text-red-400" />
-                 <span>Gestão de Acessos</span>
-               </button>
-             </div>
-           )}
+          <SidebarSection title="Parceiros">
+            <SidebarNavItem icon={<Truck className="h-[18px] w-[18px]" />} label="Fornecedores & Homologação" hint="Fornecedores & Homologação — qualificação" view="fornecedores" activeView={appView} onNavigate={setAppView} />
+          </SidebarSection>
 
-        </div>
+          {(userProfile?.role === 'admin' || !isSupabaseConfigured) && (
+            <SidebarSection title="Configurações & Admin">
+              <SidebarNavItem icon={<Building2 className="h-[18px] w-[18px]" />} label="Minha Organização" hint="Minha Organização — dados da empresa" view="organizacao" activeView={appView} onNavigate={setAppView} />
+              <SidebarNavItem icon={<KeyRound className="h-[18px] w-[18px]" />} label="Gestão de Acessos" hint="Gestão de Acessos — permissões de usuários" view="acessos" activeView={appView} onNavigate={setAppView} />
+            </SidebarSection>
+          )}
+        </nav>
 
         {/* Sidebar Footer */}
         <div className="p-4 border-t border-slate-800 space-y-2 bg-slate-950/80 text-[11px] font-bold">
