@@ -203,12 +203,33 @@ h1, h2, h3, h4, h5, h6 {
 .axemet-main input:not([type='checkbox']):not([type='radio']),
 .axemet-main select,
 .axemet-main textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   background-color: rgba(10, 16, 27, 0.6) !important;
   color: var(--ax-text-main) !important;
   border-radius: 8px !important;
   padding: 0.6rem 0.85rem;
   transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* GLOBAL responsiveness for ALL fields (incl. modals outside .axemet-main):
+   allow shrinking inside flex/grid so they never overflow on small screens. */
+input:not([type='checkbox']):not([type='radio']),
+select,
+textarea {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+/* Flex/grid rows that wrap inputs must allow their children to shrink */
+.axemet-shell .flex,
+.axemet-shell .grid {
+  min-width: 0;
 }
 
 .axemet-main input::placeholder,
@@ -455,7 +476,8 @@ h1, h2, h3, h4, h5, h6 {
   align-items: center;
   justify-content: center;
   gap: 0.4rem;
-  white-space: nowrap;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 
 /* Larger, touch-friendly hit areas for primary action buttons */

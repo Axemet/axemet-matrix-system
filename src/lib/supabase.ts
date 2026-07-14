@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
-import { Client, RawMaterial, InternalServiceItem, MachiningType, BudgetDraft, StandardComponentStock } from '../types';
+import {
+  Client, RawMaterial, InternalServiceItem, MachiningType, BudgetDraft, StandardComponentStock,
+  MatrixProject, RawMaterialStock, QualityInspection, NonConformance,
+  BillingMilestone, CashTransaction, MaintenanceLog,
+} from '../types';
 
 // @ts-ignore
 const supabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
@@ -438,5 +442,421 @@ export async function syncDeleteBudget(id: string): Promise<void> {
     .from('budgets')
     .delete()
     .eq('id', id);
+  if (error) throw error;
+}
+
+// ================================================================
+// ERP OPERATIONAL SYNC — Modules 2–11
+// ================================================================
+
+// --- Mappers ---
+
+function mapDbProjectToProject(db: any): MatrixProject {
+  return {
+    id: db.id,
+    reference: db.reference,
+    clientName: db.client_name,
+    moldDescription: db.mold_description,
+    moldType: db.mold_type,
+    moldingMaterial: db.molding_material,
+    productQuantity: Number(db.product_quantity),
+    deliveryTime: db.delivery_time,
+    status: db.status,
+    date: db.date,
+    moldWidth: Number(db.mold_width),
+    moldLength: Number(db.mold_length),
+    subprojects: db.subprojects || [],
+    bom: db.bom || [],
+    revisions: db.revisions || [],
+    costs: db.costs || { orçado: 0, real: 0, detalhado: { materials: 0, normalizados: 0, horasMaquina: 0, maoDeObra: 0, terceiros: 0, refugo: 0 } },
+    documents: db.documents || [],
+  };
+}
+
+function mapProjectToDb(p: MatrixProject) {
+  return {
+    id: p.id,
+    reference: p.reference,
+    client_name: p.clientName,
+    mold_description: p.moldDescription,
+    mold_type: p.moldType,
+    molding_material: p.moldingMaterial,
+    product_quantity: p.productQuantity,
+    delivery_time: p.deliveryTime,
+    status: p.status,
+    date: p.date,
+    mold_width: p.moldWidth,
+    mold_length: p.moldLength,
+    subprojects: p.subprojects,
+    bom: p.bom,
+    revisions: p.revisions,
+    costs: p.costs,
+    documents: p.documents,
+  };
+}
+
+function mapDbStockToRawStock(db: any): RawMaterialStock {
+  return {
+    id: db.id,
+    type: db.type,
+    dimensions: db.dimensions,
+    weight: Number(db.weight),
+    batch: db.batch,
+    certificateUrl: db.certificate_url || undefined,
+    status: db.status,
+    reservedForProjId: db.reserved_for_proj_id || undefined,
+    qualityDureza: db.quality_dureza || undefined,
+  };
+}
+
+function mapRawStockToDb(s: RawMaterialStock) {
+  return {
+    id: s.id,
+    type: s.type,
+    dimensions: s.dimensions,
+    weight: s.weight,
+    batch: s.batch,
+    certificate_url: s.certificateUrl || null,
+    status: s.status,
+    reserved_for_proj_id: s.reservedForProjId || null,
+    quality_dureza: s.qualityDureza || null,
+  };
+}
+
+function mapDbInspectionToInspection(db: any): QualityInspection {
+  return {
+    id: db.id,
+    projectId: db.project_id,
+    projectName: db.project_name,
+    bomItemId: db.bom_item_id,
+    bomItemName: db.bom_item_name,
+    operatorName: db.operator_name,
+    date: db.date,
+    dimensionsMeasured: db.dimensions_measured || [],
+    overallStatus: db.overall_status,
+    cmmReportUrl: db.cmm_report_url || undefined,
+    nonConformanceId: db.non_conformance_id || undefined,
+  };
+}
+
+function mapInspectionToDb(i: QualityInspection) {
+  return {
+    id: i.id,
+    project_id: i.projectId,
+    project_name: i.projectName,
+    bom_item_id: i.bomItemId,
+    bom_item_name: i.bomItemName,
+    operator_name: i.operatorName,
+    date: i.date,
+    dimensions_measured: i.dimensionsMeasured,
+    overall_status: i.overallStatus,
+    cmm_report_url: i.cmmReportUrl || null,
+    non_conformance_id: i.nonConformanceId || null,
+  };
+}
+
+function mapDbRncToRnc(db: any): NonConformance {
+  return {
+    id: db.id,
+    projectId: db.project_id,
+    projectName: db.project_name,
+    bomItemId: db.bom_item_id,
+    bomItemName: db.bom_item_name,
+    classification: db.classification,
+    rootCause5Whys: db.root_cause_5whys || [],
+    ishikawa: db.ishikawa || { method: '', machine: '', material: '', manpower: '', measurement: '', environment: '' },
+    actionPlan: db.action_plan,
+    responsible: db.responsible,
+    deadline: db.deadline,
+    cost: Number(db.cost),
+    status: db.status,
+  };
+}
+
+function mapRncToDb(r: NonConformance) {
+  return {
+    id: r.id,
+    project_id: r.projectId,
+    project_name: r.projectName,
+    bom_item_id: r.bomItemId,
+    bom_item_name: r.bomItemName,
+    classification: r.classification,
+    root_cause_5whys: r.rootCause5Whys,
+    ishikawa: r.ishikawa,
+    action_plan: r.actionPlan,
+    responsible: r.responsible,
+    deadline: r.deadline || null,
+    cost: r.cost,
+    status: r.status,
+  };
+}
+
+function mapDbMilestoneToMilestone(db: any): BillingMilestone {
+  return {
+    id: db.id,
+    projectId: db.project_id,
+    projectName: db.project_name,
+    description: db.description,
+    percent: Number(db.percent),
+    value: Number(db.value),
+    dueDate: db.due_date,
+    status: db.status,
+  };
+}
+
+function mapMilestoneToDb(m: BillingMilestone) {
+  return {
+    id: m.id,
+    project_id: m.projectId,
+    project_name: m.projectName,
+    description: m.description,
+    percent: m.percent,
+    value: m.value,
+    due_date: m.dueDate || null,
+    status: m.status,
+  };
+}
+
+function mapDbTransactionToTransaction(db: any): CashTransaction {
+  return {
+    id: db.id,
+    projectId: db.project_id,
+    projectName: db.project_name,
+    type: db.type,
+    category: db.category,
+    description: db.description,
+    value: Number(db.value),
+    date: db.date,
+    status: db.status,
+  };
+}
+
+function mapTransactionToDb(t: CashTransaction) {
+  return {
+    id: t.id,
+    project_id: t.projectId,
+    project_name: t.projectName,
+    type: t.type,
+    category: t.category,
+    description: t.description,
+    value: t.value,
+    date: t.date,
+    status: t.status,
+  };
+}
+
+function mapDbMaintLogToMaintLog(db: any): MaintenanceLog {
+  return {
+    id: db.id,
+    projectId: db.project_id,
+    projectName: db.project_name,
+    cycles: Number(db.cycles),
+    type: db.type,
+    description: db.description,
+    partsReplaced: db.parts_replaced || [],
+    cost: Number(db.cost),
+    date: db.date,
+    responsible: db.responsible,
+    isWarranty: Boolean(db.is_warranty),
+    status: db.status,
+  };
+}
+
+function mapMaintLogToDb(m: MaintenanceLog) {
+  return {
+    id: m.id,
+    project_id: m.projectId,
+    project_name: m.projectName,
+    cycles: m.cycles,
+    type: m.type,
+    description: m.description,
+    parts_replaced: m.partsReplaced,
+    cost: m.cost,
+    date: m.date,
+    responsible: m.responsible,
+    is_warranty: m.isWarranty,
+    status: m.status,
+  };
+}
+
+// --- 7. ERP Projects ---
+
+export async function syncFetchErpProjects(): Promise<MatrixProject[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_projects')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbProjectToProject);
+}
+
+export async function syncSaveErpProject(project: MatrixProject): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_projects')
+    .upsert(mapProjectToDb(project), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteErpProject(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_projects').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- 8. Raw Material Stock ---
+
+export async function syncFetchRawStock(): Promise<RawMaterialStock[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_raw_material_stock')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbStockToRawStock);
+}
+
+export async function syncSaveRawStockItem(item: RawMaterialStock): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_raw_material_stock')
+    .upsert(mapRawStockToDb(item), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteRawStockItem(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_raw_material_stock').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- 9. Quality Inspections ---
+
+export async function syncFetchInspections(): Promise<QualityInspection[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_quality_inspections')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbInspectionToInspection);
+}
+
+export async function syncSaveInspection(inspection: QualityInspection): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_quality_inspections')
+    .upsert(mapInspectionToDb(inspection), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteInspection(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_quality_inspections').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- 10. Non-Conformances (RNCs) ---
+
+export async function syncFetchNonConformances(): Promise<NonConformance[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_non_conformances')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbRncToRnc);
+}
+
+export async function syncSaveNonConformance(rnc: NonConformance): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_non_conformances')
+    .upsert(mapRncToDb(rnc), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteNonConformance(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_non_conformances').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- 11. Billing Milestones ---
+
+export async function syncFetchMilestones(): Promise<BillingMilestone[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_billing_milestones')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbMilestoneToMilestone);
+}
+
+export async function syncSaveMilestone(milestone: BillingMilestone): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_billing_milestones')
+    .upsert(mapMilestoneToDb(milestone), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteMilestone(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_billing_milestones').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- 12. Cash Transactions ---
+
+export async function syncFetchTransactions(): Promise<CashTransaction[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_cash_transactions')
+    .select('*')
+    .order('date', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbTransactionToTransaction);
+}
+
+export async function syncSaveTransaction(transaction: CashTransaction): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_cash_transactions')
+    .upsert(mapTransactionToDb(transaction), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteTransaction(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_cash_transactions').delete().eq('id', id);
+  if (error) throw error;
+}
+
+// --- 13. Maintenance Logs ---
+
+export async function syncFetchMaintenanceLogs(): Promise<MaintenanceLog[]> {
+  if (!isSupabaseConfigured) return [];
+  const { data, error } = await supabase
+    .from('erp_maintenance_logs')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data || []).map(mapDbMaintLogToMaintLog);
+}
+
+export async function syncSaveMaintenanceLog(log: MaintenanceLog): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase
+    .from('erp_maintenance_logs')
+    .upsert(mapMaintLogToDb(log), { onConflict: 'id' });
+  if (error) throw error;
+}
+
+export async function syncDeleteMaintenanceLog(id: string): Promise<void> {
+  if (!isSupabaseConfigured) throw new Error('Supabase not configured');
+  const { error } = await supabase.from('erp_maintenance_logs').delete().eq('id', id);
   if (error) throw error;
 }
