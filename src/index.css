@@ -1,11 +1,10 @@
-@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Inter:opsz,wght@14..32,300;14..32,400;14..32,500;14..32,600;14..32,700;14..32,800;14..32,900&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Inter", ui-sans-serif, sans-serif;
-  --font-heading: "Inter", ui-sans-serif, sans-serif;
-  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-heading: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Inter", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
 /* Custom premium animations */
@@ -35,10 +34,10 @@
   --ax-panel-solid: #0f172a;
   --ax-accent: #ff9f1c; /* Laser Amber / Neon Gold */
   --ax-accent-glow: rgba(255, 159, 28, 0.15);
-  --ax-border: rgba(255, 255, 255, 0.08);
-  --ax-border-highlight: rgba(255, 255, 255, 0.15);
+  --ax-border: rgba(255, 255, 255, 0.12);
+  --ax-border-highlight: rgba(255, 255, 255, 0.2);
   --ax-text-main: #f8fafc;
-  --ax-text-muted: #94a3b8;
+  --ax-text-muted: #b6c2d4; /* raised for WCAG AA contrast on dark */
   --ax-navy: #0b1329;
 }
 
@@ -283,7 +282,8 @@ h1, h2, h3, h4, h5, h6 {
   font-weight: 800;
   letter-spacing: 0.15em;
   padding: 6px 12px;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Inter", ui-monospace, monospace;
+  font-feature-settings: "tnum" 1, "zero" 1;
 }
 
 .ax-login-card {
@@ -325,19 +325,21 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Unified tabs, tables, status badges */
 .badge-status {
-  padding: 3px 8px;
+  padding: 3px 9px;
   border-radius: 6px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  font-family: "IBM Plex Mono", monospace;
+  font-family: "Inter", ui-monospace, monospace;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.03em;
 }
 
-.badge-status-production { background: rgba(59, 130, 246, 0.12); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.25); }
-.badge-status-tryout { background: rgba(168, 85, 247, 0.12); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.25); }
-.badge-status-delivered { background: rgba(34, 197, 94, 0.12); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.25); }
-.badge-status-warning { background: rgba(245, 158, 11, 0.12); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.25); }
-.badge-status-error { background: rgba(239, 68, 68, 0.12); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.25); }
+.badge-status-production { background: rgba(59, 130, 246, 0.16); color: #93c5fd; border: 1px solid rgba(59, 130, 246, 0.4); }
+.badge-status-tryout { background: rgba(168, 85, 247, 0.16); color: #d8b4fe; border: 1px solid rgba(168, 85, 247, 0.4); }
+.badge-status-delivered { background: rgba(34, 197, 94, 0.16); color: #86efac; border: 1px solid rgba(34, 197, 94, 0.4); }
+.badge-status-warning { background: rgba(245, 158, 11, 0.16); color: #fcd34d; border: 1px solid rgba(245, 158, 11, 0.4); }
+.badge-status-error { background: rgba(239, 68, 68, 0.16); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); }
 
 /* Bento Grid Widgets */
 .bento-metric-card {
@@ -361,4 +363,102 @@ h1, h2, h3, h4, h5, h6 {
 
 .hover-scale:hover {
   transform: scale(1.02);
+}
+
+/* =========================================================
+   ACCESSIBILITY & UI FOUNDATION (ENGINEERED BY UI/UX REVIEW)
+   ========================================================= */
+
+/* Skip link for keyboard / screen-reader users */
+.skip-link {
+  position: fixed;
+  top: -100px;
+  left: 1rem;
+  z-index: 999;
+  padding: 0.65rem 1.1rem;
+  background: var(--ax-accent);
+  color: #050811;
+  font-weight: 700;
+  border-radius: 10px;
+  transition: top 0.2s ease;
+}
+.skip-link:focus {
+  top: 1rem;
+}
+
+/* Consistent, visible focus for every interactive element */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid var(--ax-accent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+
+/* Base sizing for buttons so labels never overflow their hit-area */
+.axemet-shell button,
+.axemet-shell [role='button'] {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  white-space: nowrap;
+}
+
+/* Larger, touch-friendly hit areas for primary action buttons */
+.axemet-shell button:not(.axemet-sidebar button):not([class*='px-1']):not([class*='py-1']):not([class*='p-1']),
+.rh-primary,
+.ax-login-card form > button[type='submit'] {
+  min-height: 44px;
+}
+
+/* Inputs/selects get a comfortable, uniform height and alignment */
+.axemet-main input:not([type='checkbox']):not([type='radio']),
+.axemet-main select,
+.axemet-main textarea {
+  min-height: 42px;
+  line-height: 1.4;
+  font-size: 14px;
+  font-feature-settings: "tnum" 1, "cv01" 1;
+}
+
+/* Numeric / data fields align nicely when using the mono utility */
+.axemet-main .font-mono,
+.font-mono {
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* Boost legibility of secondary text across the app (WCAG AA) */
+.text-slate-500,
+.text-slate-400 {
+  color: var(--ax-text-muted) !important;
+}
+
+/* Smooth, accessible scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* High-contrast helper: when the OS forces it, lift borders & text */
+@media (prefers-contrast: more) {
+  :root {
+    --ax-border: rgba(255, 255, 255, 0.28);
+    --ax-text-muted: #dfe6f0;
+  }
+  .axemet-sidebar button {
+    color: #ffffff !important;
+  }
 }

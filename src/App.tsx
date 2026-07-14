@@ -1768,6 +1768,7 @@ export default function App() {
 
   return (
     <div className="axemet-shell min-h-screen bg-[#040710] text-slate-100 font-sans antialiased flex flex-col md:flex-row">
+      <a href="#main-content" className="skip-link">Pular para o conteúdo principal</a>
       
       {/* Toast Notification Banner */}
       {toastMessage && (
@@ -2219,7 +2220,7 @@ export default function App() {
         </header>
 
         {/* CONTENT STAGE */}
-        <main className="axemet-main w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1">
+        <main id="main-content" tabIndex={-1} className="axemet-main w-full max-w-7xl mx-auto px-4 sm:px-6 py-6 flex-1 focus:outline-none">
 
 
         {/* 1. HOME SCREEN: List of Budgets */}
