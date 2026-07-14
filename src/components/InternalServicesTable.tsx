@@ -42,7 +42,7 @@ export default function InternalServicesTable({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-gray-100">
         <div className="flex items-center gap-2">
           <Briefcase className="w-5 h-5 text-indigo-600" />
-          <h2 className="text-base font-bold text-gray-900 tracking-tight">
+          <h2 className="text-base font-bold !text-gray-900 tracking-tight">
             Serviços Internos (Oficina)
           </h2>
         </div>
