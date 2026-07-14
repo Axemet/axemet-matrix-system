@@ -288,7 +288,7 @@ function Empty({ icon: Icon, text }: { icon: any; text: string }) {
   );
 }
 
-function Alert({ project, text, tone }: { project: ManufacturingProject; text: string; tone: 'red' | 'amber' }) {
+function Alert({ project, text, tone }: { project: ManufacturingProject; text: string; tone: 'red' | 'amber'; key?: string }) {
   return (
     <div
       className={`rounded-xl border p-4 ${
