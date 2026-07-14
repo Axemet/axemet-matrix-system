@@ -199,24 +199,7 @@ h1, h2, h3, h4, h5, h6 {
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-/* Forms Input Aero-Styling */
-.axemet-main input:not([type='checkbox']):not([type='radio']),
-.axemet-main select,
-.axemet-main textarea {
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
-  box-sizing: border-box;
-  border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  background-color: rgba(10, 16, 27, 0.6) !important;
-  color: var(--ax-text-main) !important;
-  border-radius: 8px !important;
-  padding: 0.6rem 0.85rem;
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-/* GLOBAL responsiveness for ALL fields (incl. modals outside .axemet-main):
-   allow shrinking inside flex/grid so they never overflow on small screens. */
+/* Forms: responsive base for ALL inputs (works in light & dark contexts) */
 input:not([type='checkbox']):not([type='radio']),
 select,
 textarea {
@@ -232,23 +215,37 @@ textarea {
   min-width: 0;
 }
 
-.axemet-main input::placeholder,
-.axemet-main textarea::placeholder,
-.axemet-main select::placeholder {
+/* Inputs inside FORCE-DARK panels: dark surface + light text (WCAG AA).
+   Light-themed cards (e.g. bg-white rounded-xl) keep their own input styling
+   so fields like the QTD in Chapas/Componentes stay clearly visible & editable. */
+.axemet-main .rounded-2xl.border.bg-white input:not([type='checkbox']):not([type='radio']),
+.axemet-main .rounded-2xl.border.bg-white select,
+.axemet-main .rounded-2xl.border.bg-white textarea {
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background-color: rgba(10, 16, 27, 0.6) !important;
+  color: var(--ax-text-main) !important;
+  border-radius: 8px !important;
+  padding: 0.6rem 0.85rem;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.axemet-main .rounded-2xl.border.bg-white input::placeholder,
+.axemet-main .rounded-2xl.border.bg-white textarea::placeholder,
+.axemet-main .rounded-2xl.border.bg-white select::placeholder {
   color: var(--ax-text-muted) !important;
   opacity: 0.7;
 }
 
-.axemet-main input:hover,
-.axemet-main select:hover,
-.axemet-main textarea:hover {
+.axemet-main .rounded-2xl.border.bg-white input:hover,
+.axemet-main .rounded-2xl.border.bg-white select:hover,
+.axemet-main .rounded-2xl.border.bg-white textarea:hover {
   border-color: rgba(255, 159, 28, 0.4) !important;
   background-color: rgba(15, 23, 42, 0.8) !important;
 }
 
-.axemet-main input:focus,
-.axemet-main select:focus,
-.axemet-main textarea:focus {
+.axemet-main .rounded-2xl.border.bg-white input:focus,
+.axemet-main .rounded-2xl.border.bg-white select:focus,
+.axemet-main .rounded-2xl.border.bg-white textarea:focus {
   border-color: var(--ax-accent) !important;
   background-color: rgba(15, 23, 42, 0.95) !important;
   box-shadow: 0 0 0 3px rgba(255, 159, 28, 0.15) !important;
