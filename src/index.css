@@ -163,38 +163,55 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--ax-text-main) !important;
 }
 
+/* Muted text variants on the dark panel */
+.axemet-main .rounded-2xl.border.bg-white :is(.text-slate-500, .text-slate-400, .text-gray-500, .text-gray-400) {
+  color: var(--ax-text-muted) !important;
+}
+
+/* Accent text shades (incl. 800/900) -> light variants so nothing lands dark-on-dark */
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-emerald-700, .text-emerald-600
+  .text-emerald-900, .text-emerald-800, .text-emerald-700, .text-emerald-600, .text-emerald-500
 ) {
   color: #6ee7b7 !important;
 }
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-indigo-700, .text-indigo-600
+  .text-indigo-900, .text-indigo-800, .text-indigo-700, .text-indigo-600, .text-indigo-500
 ) {
   color: #a5b4fc !important;
 }
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-blue-600, .text-blue-500, .text-sky-700
+  .text-blue-900, .text-blue-800, .text-blue-700, .text-blue-600, .text-blue-500, .text-sky-800, .text-sky-700, .text-sky-600
 ) {
   color: #7dd3fc !important;
 }
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-red-600, .text-red-500
+  .text-red-900, .text-red-800, .text-red-700, .text-red-600, .text-red-500
 ) {
   color: #fca5a5 !important;
 }
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-amber-700, .text-amber-600
+  .text-amber-900, .text-amber-800, .text-amber-700, .text-amber-600, .text-amber-500
 ) {
   color: #fcd34d !important;
 }
 .axemet-main .rounded-2xl.border.bg-white :is(
-  .text-teal-700
+  .text-teal-900, .text-teal-800, .text-teal-700, .text-teal-600
 ) {
   color: #5eead4 !important;
 }
 
-.axemet-main .rounded-2xl.border.bg-white :is(.bg-white, .bg-slate-50, .bg-slate-100, .bg-gray-50, .bg-gray-100, .bg-indigo-50\/30) {
+/* Force EVERY light / tinted surface inside the darkened panels to a dark
+   translucent background, so white text never sits on a white box.
+   Includes the /NN opacity variants used as inner cards. */
+.axemet-main .rounded-2xl.border.bg-white :is(
+  .bg-white, .bg-slate-50, .bg-slate-50\/50, .bg-slate-50\/60, .bg-slate-50\/70,
+  .bg-slate-100, .bg-slate-200, .bg-gray-50, .bg-gray-100,
+  .bg-emerald-50, .bg-emerald-50\/40, .bg-emerald-50\/50,
+  .bg-blue-50, .bg-blue-50\/50,
+  .bg-indigo-50, .bg-indigo-50\/30, .bg-indigo-50\/40, .bg-indigo-50\/50,
+  .bg-amber-50, .bg-amber-50\/40,
+  .bg-red-50, .bg-rose-50
+) {
   background-color: rgba(255, 255, 255, 0.06) !important;
   border-color: rgba(255, 255, 255, 0.1) !important;
 }
